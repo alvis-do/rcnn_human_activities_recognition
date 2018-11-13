@@ -32,7 +32,7 @@ model_saver = '../model_saver/'
 n_classes = 4
 n_input = [224,224,3]
 n_output = [7,7,9]
-batch_size = 4
+batch_size = 8
 
 
 # In[4]:
@@ -428,17 +428,17 @@ with tf.Session(config=config) as sess:
             batch_input = get_batch('X_train', batch) 
             batch_label = get_batch('y_train', batch)
             # chay train_op, loss_op, accuracy
-            _, argmax_pred, cost, acc, summary = sess.run([train_op, argmax_pred, loss_op, accuracy, merged_summary_op], feed_dict={X:batch_input, y:batch_label, is_training:True})
+            _, cost, acc, summary = sess.run([train_op, loss_op, accuracy, merged_summary_op], feed_dict={X:batch_input, y:batch_label, is_training:True})
             # Write logs at every iteration
             tf_writer.add_summary(summary, epoch * total_batch + batch)
             print("---Batch:" + ('%04d,' % (batch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
             #if batch == 10:
-            print(argmax_pred)
-            break
+            #print(argmax_pred)
+            #break
             
         epoch += 1;
         
-        continue
+        #continue
         # hien thi ket qua sau moi epoch
         print("Epoch:" + ('%04d,' % (epoch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
         if epoch % 5 == 0:
