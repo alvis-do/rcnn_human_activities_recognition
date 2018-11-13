@@ -223,7 +223,6 @@ WARM_UP_BATCHES = 3
 ANCHORS = [1., 1.] # don vi: cell
 
 def loss_op(y_pred, y_true):
-    #y_pred = tf.Print(y_pred, [y_pred[...,5:]], summarize=4*7*7*4)
     #y_pred = tf.Print(y_pred, [y_pred[0]], "=> y_pred: ", summarize=7*7*9)
     mask_shape = tf.shape(y_true)[:3]
     
@@ -372,13 +371,15 @@ cnn_model = cnn_model(X, model_path, is_training)
 learning_rate = 0.0001
 # loss 
 loss_op = loss_op(cnn_model, y);
-# optimizer 
+# optimizer corrP
 optimal = tf.train.AdamOptimizer(learning_rate, name='adam_optimizer')
 # increment global_step at each step.
 train_op = optimal.minimize(loss_op, name='optimal_min')
 
 # evaluate model
-correct_prediction = tf.equal(tf.argmax(cnn_model[...,5:], 1), tf.argmax(y[...,5:],1))
+argmax_pred = tf.argmax(cnn_model[...,5:], 1)
+argmax_true = tf.argmax(y[...,5:], 1)
+correct_prediction = tf.equal(argmax_pred, argmax_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
@@ -427,11 +428,12 @@ with tf.Session(config=config) as sess:
             batch_input = get_batch('X_train', batch) 
             batch_label = get_batch('y_train', batch)
             # chay train_op, loss_op, accuracy
-            _, cost, acc, summary = sess.run([train_op, loss_op, accuracy, merged_summary_op], feed_dict={X:batch_input, y:batch_label, is_training:True})
+            _, argmax_pred, cost, acc, summary = sess.run([train_op, argmax_pred, loss_op, accuracy, merged_summary_op], feed_dict={X:batch_input, y:batch_label, is_training:True})
             # Write logs at every iteration
             tf_writer.add_summary(summary, epoch * total_batch + batch)
             print("---Batch:" + ('%04d,' % (batch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
             #if batch == 10:
+            print(argmax_pred)
             break
             
         epoch += 1;
