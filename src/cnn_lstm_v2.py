@@ -28,7 +28,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # 1 if using cudnn on GPU else using CPU
 CUDNN_GPU = 0
 model_path = 'my_model.csv'
-data_path = '../dataset/my_dict.npy'
+data_path = '/Users/thoithanh/Git/LRCNs/data/ha1/my_dict.npy'
 model_saver = '../model_saver/'
 n_classes = 4
 n_input = [224,224,3]
@@ -269,7 +269,7 @@ def loss_op_class_only(y_pred, y_true):
 
 
 def loss_op(y_pred, y_true):
-    #y_pred = tf.Print(y_pred, [y_pred[0]], "=> y_pred: ", summarize=7*7*9)
+    y_pred = tf.Print(y_pred, [y_pred[0]], "=> y_pred: ", summarize=7*7*9)
     mask_shape = tf.shape(y_true)[:3]
     
     cell_x = tf.to_float(tf.reshape(tf.tile(tf.range(7), [7]), (1, 7, 7, 1)))
