@@ -2,6 +2,6 @@ import numpy as np
 import tensorflow as tf 
 
 with tf.Session() as sess:
-	sigmoid = tf.sigmoid([0, 1000., 12.])
-	#tf.Print(sigmoid, [sigmoid])
-	print(sigmoid.eval())
+	a = [[1,1,1],[2,2,2],[3,3,3]]
+	
+	print(a)

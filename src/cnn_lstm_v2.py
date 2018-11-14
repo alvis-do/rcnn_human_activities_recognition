@@ -33,14 +33,14 @@ model_saver = '../model_saver/'
 n_classes = 4
 n_input = [224,224,3]
 n_output = [7,7,9]
-batch_size = 8
+batch_size = 32
 
 
 # In[4]:
 
 
 data = np.load(data_path).item()
-print(pd.read_csv(model_path))
+#print(pd.read_csv(model_path))
 
 
 # In[5]:
@@ -138,11 +138,13 @@ def cnn_model(input, model_path, is_training=True):
         
     return output
 '''
+
 def cnn_model(input, model_path, is_training):
     with slim.arg_scope([slim.fully_connected], 
                             activation_fn=tf.nn.relu,
                             biases_initializer=None,
-                            normalizer_fn=None):
+                            normalizer_fn=slim.batch_norm,
+                            normalizer_params={'is_training': is_training}):
     
         with slim.arg_scope([slim.conv2d], padding='SAME', 
                             activation_fn=tf.nn.leaky_relu,
@@ -172,17 +174,20 @@ def cnn_model(input, model_path, is_training):
             
             # Convolution layer 6
             net = slim.conv2d(net, 512, 3, stride=1, scope='conv6')
+            #net = slim.max_pool2d(net, 2, stride=2, scope='pool5')
 
-            net = slim.flatten(net, scope='flatten1')
+            #net = slim.flatten(net, scope='flatten1')
+            net = slim.conv2d(net, 9, 1, stride=1, scope='conv7')
+
             
         # Fully connected layer 1
-        net = slim.fully_connected(net, 4096, scope='fc1')
+        #net = slim.fully_connected(net, 4096, scope='fc1')
 
-        net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
+        #net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
          # Fully connected layer 2
-        net = slim.fully_connected(net, 441,scope='fc2')
+        #net = slim.fully_connected(net, 441,scope='fc2')
 
-        outputs = tf.reshape(tensor=net, shape=[batch_size,7,7,9])
+        outputs = net#tf.reshape(tensor=net, shape=[batch_size,7,7,9])
         
     return outputs
 
@@ -248,6 +253,7 @@ tf.reset_default_graph()
 
 # the placeholders will be used for the feed_dict param of tf.Session.run()
 is_training = tf.placeholder(tf.bool, name='is_training')
+training_class_only = tf.placeholder(tf.bool, name='training_class_only')
 
 X = tf.placeholder(tf.float32, [None, n_input[0], n_input[1], n_input[2]], name='X_train')
 y = tf.placeholder(tf.float32, [None, n_output[0], n_output[1], n_output[2]], name='y_train')
@@ -258,8 +264,9 @@ y = tf.placeholder(tf.float32, [None, n_output[0], n_output[1], n_output[2]], na
 
 LAMDA_NOOBJ = 0.5
 LAMDA_COORD = 5.0
-WARM_UP_BATCHES = 3
-ANCHORS = [1., 1.] # don vi: cell
+
+def loss_op_class_only(y_pred, y_true):
+
 
 def loss_op(y_pred, y_true):
     #y_pred = tf.Print(y_pred, [y_pred[0]], "=> y_pred: ", summarize=7*7*9)
@@ -273,9 +280,6 @@ def loss_op(y_pred, y_true):
     conf_mask  = tf.zeros(mask_shape)
     class_mask = tf.zeros(mask_shape)
 
-    seen = tf.Variable(0.)
-    total_recall = tf.Variable(0.)
-
     """
     Adjust prediction
     """
@@ -283,24 +287,18 @@ def loss_op(y_pred, y_true):
 
     y_pred_xy = y_pred[..., :2]
     #y_pred_xy = tf.Print(y_pred_xy, [y_pred_xy], "===> y_pred_xy: ")
-    pred_box_xy = (tf.sigmoid(y_pred_xy) + cell_grid)
+    pred_box_xy = tf.sigmoid(y_pred_xy) + cell_grid
 
     ### adjust w and h
     pred_box_wh = y_pred[..., 2:4]
     #pred_box_wh = tf.Print(pred_box_wh, [pred_box_wh[0]], summarize=7*7*2)
-    pred_box_wh = tf.exp(pred_box_wh) * np.reshape(ANCHORS, [1,1,1,2])
+    pred_box_wh = tf.exp(pred_box_wh)
 
     ### adjust confidence
     pred_box_conf = tf.sigmoid(y_pred[..., 4])
 
     ### adjust class probabilities
     pred_box_class = y_pred[..., 5:]
-
-    #pred_shape = tf.shape(pred_box_class)
-    #pred_box_class = tf.Print(pred_box_class, 
-    #    [pred_box_class[0]],
-    #     "=> pred_box_class: ",
-    #     summarize=7*7*4)
 
     """
     Adjust ground truth
@@ -350,38 +348,22 @@ def loss_op(y_pred, y_true):
     conf_obj_mask = y_true[..., 4]
 
     ### class mask: simply the position of the ground truth boxes (the predictors)
-    class_mask = y_true[..., 4] * tf.ones(tf.shape(y_true[..., 4])) 
-
-    """
-    Warm-up training
-    """
-    no_boxes_mask = tf.to_float(coord_mask < 0.5)
-    seen = tf.assign_add(seen, 1.)
-    true_box_xy, true_box_wh, coord_mask = tf.cond(tf.less(seen, WARM_UP_BATCHES), 
-                          lambda: [true_box_xy + (0.5 + cell_grid) * no_boxes_mask, 
-                                   true_box_wh + tf.ones_like(true_box_wh) * np.reshape(ANCHORS, [1,1,1,2]) * no_boxes_mask, 
-                                   tf.ones_like(coord_mask)],
-                          lambda: [true_box_xy, 
-                                   true_box_wh,
-                                   coord_mask])
+    class_mask = y_true[..., 4] * tf.ones(tf.shape(y_true[..., 4])) # convert y_true in interger type to float type
 
 
     """
     Finalize the loss
     """
-    loss_xy    = tf.reduce_sum(tf.square(true_box_xy-pred_box_xy)           * coord_mask)
-    loss_wh    = tf.reduce_sum(tf.square(true_box_wh-pred_box_wh)           * coord_mask)
-    loss_conf_obj    = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_obj_mask) 
-    loss_conf_noobj  = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_noobj_mask) 
-    #loss_class = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=true_box_class, logits=pred_box_class)
-    #loss_class = tf.Print(loss_class, [loss_class[0]],"=> loss_class: ",summarize=7*7)
-    #loss_class = tf.reduce_sum(loss_class * class_mask) / (nb_class_box + 1e-6)
-    loss_class = tf.reduce_sum(tf.reduce_sum(tf.square(true_box_class - tf.nn.softmax(pred_box_class)), -1) * class_mask)
+    loss_xy = tf.reduce_sum(tf.square(true_box_xy-pred_box_xy) * coord_mask, [1,2,3])
+    loss_wh = tf.reduce_sum(tf.square(true_box_wh-pred_box_wh) * coord_mask, [1,2,3])
+    loss_conf_obj = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_obj_mask, [1,2]) 
+    loss_conf_noobj = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_noobj_mask, [1,2]) 
+    loss_class = tf.reduce_sum(tf.reduce_sum(tf.square(true_box_class - tf.nn.softmax(pred_box_class)), -1) * class_mask, [1,2])
 
-    #loss = (loss_xy + loss_wh) * LAMDA_COORD + loss_conf_obj + loss_conf_noobj * LAMDA_NOOBJ + loss_class
-    loss = loss_class
+    loss = (loss_xy + loss_wh) * LAMDA_COORD + loss_conf_obj + loss_conf_noobj * LAMDA_NOOBJ + loss_class
+    #loss = loss_class
 
-    return loss
+    return tf.reduce_mean(loss)
 
 
 # In[10]:
@@ -408,8 +390,12 @@ cnn_model = cnn_model(X, model_path, is_training)
 #                        staircase=True,
 #                        name='learning_rate')
 learning_rate = 0.0001
+
 # loss 
-loss_op = loss_op(cnn_model, y);
+loss_op = tf.cond(tf.equal(training_class_only, tf.constant(True)), 
+                lambda: loss_op_class_only(cnn_model, y),
+                lambda: loss_op(cnn_model, y))
+
 # optimizer corrP
 optimal = tf.train.AdamOptimizer(learning_rate, name='adam_optimizer')
 # increment global_step at each step.
@@ -463,11 +449,19 @@ with tf.Session(config=config) as sess:
     while True:
         total_batch =  train_len // batch_size
         for batch in range(total_batch):
+        #for batch in range(3):
             # lay batch tiep theo
             batch_input = get_batch('X_train', batch) 
             batch_label = get_batch('y_train', batch)
             # chay train_op, loss_op, accuracy
-            _, cost, acc, summary = sess.run([train_op, loss_op, accuracy, merged_summary_op], feed_dict={X:batch_input, y:batch_label, is_training:True})
+            _, cost, acc, summary = sess.run([train_op, loss_op, accuracy, merged_summary_op], 
+                    feed_dict={
+                        X: batch_input, 
+                        y: batch_label, 
+                        is_training: True,
+                        training_class_only: sys.argv[1]
+                    })
+
             # Write logs at every iteration
             tf_writer.add_summary(summary, epoch * total_batch + batch)
             print("---Batch:" + ('%04d,' % (batch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
@@ -480,10 +474,10 @@ with tf.Session(config=config) as sess:
         #continue
         # hien thi ket qua sau moi epoch
         print("Epoch:" + ('%04d,' % (epoch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
-        if epoch % 5 == 0:
+        #if epoch % 5 == 0:
             # Luu tru variables vao disk.
-            save_path = saver.save(sess, model_saver + 'nn_model_%04d.ckpt'%(epoch))
-            print("Model saved in path: %s \n" % save_path)
+            #save_path = saver.save(sess, model_saver + 'nn_model_%04d.ckpt'%(epoch))
+            #print("Model saved in path: %s \n" % save_path)
 
 # In[ ]:
 
