@@ -17,6 +17,7 @@ import pandas as pd
 import import_ipynb
 #from loss_function import loss_op
 import shutil
+import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -44,7 +45,7 @@ print(pd.read_csv(model_path))
 
 # In[5]:
 
-
+'''
 def cnn_model(input, model_path, is_training=True):
     use_cudnn_on_gpu = True if CUDNN_GPU == 1 else False
     my_model = pd.read_csv(model_path)
@@ -58,13 +59,11 @@ def cnn_model(input, model_path, is_training=True):
         return result
 
     def make_conv(input_, in_channel, out_channel, filter_, strides, name):
+        
         out_channel = int(out_channel)
         strides = int(strides)
         filter_ = list(map(int,filter_.split('x')))
         filter_ = tf.Variable(tf.random_normal([filter_[0],filter_[1],in_channel,out_channel],stddev=0.1), name=name+'_filter')
-        #filter_ = tf.Variable(tf.random_uniform([filter_[0],filter_[1],in_channel,out_channel],minval=0,maxval=7), name=name+'_filter')
-        #filter_ = tf.Variable(tf.constant(0., shape=[filter_[0],filter_[1],in_channel,out_channel]), name=name+'_filter')
-        #filter_ = tf.Print(filter_, [filter_[0]], summarize=1000)
         # conv
         result = tf.nn.conv2d(input=input_, 
                          filter=filter_,
@@ -72,12 +71,6 @@ def cnn_model(input, model_path, is_training=True):
                          padding='SAME',
                          use_cudnn_on_gpu=use_cudnn_on_gpu,
                          name=name)
-        #result = tf.layers.conv2d(inputs=input_, 
-        #                        filters=filter_[0],
-        #                        kernel_size=out_channel,
-        #                        strides=strides,
-        #                        padding='SAME',
-        #                        name=name)
         # add bias
         #bias = tf.Variable(tf.random_normal([out_channel], stddev=0.1))
         #result = tf.nn.bias_add(result, bias)
@@ -86,7 +79,6 @@ def cnn_model(input, model_path, is_training=True):
         # relu
         result = tf.nn.leaky_relu(result,alpha=0.1)
         
-        #tf.summary.histogram(name, result)
         return result
         
     def make_maxpool(input_, in_channel, filter_, strides, name):
@@ -145,7 +137,54 @@ def cnn_model(input, model_path, is_training=True):
         prev_channel = layer[-1][-1]
         
     return output
+'''
+def cnn_model(input, model_path, is_training):
+    with slim.arg_scope([slim.fully_connected], 
+                            activation_fn=tf.nn.relu,
+                            biases_initializer=None,
+                            normalizer_fn=None):
+    
+        with slim.arg_scope([slim.conv2d], padding='SAME', 
+                            activation_fn=tf.nn.leaky_relu,
+                            biases_initializer=None,
+                            normalizer_fn=slim.batch_norm,
+                            normalizer_params={'is_training': is_training}):
+            
+            # Convolution layer 1
+            net = slim.conv2d(input, 16, 3, stride=1, scope='conv1')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool1')
+            
+            # Convolution layer 2
+            net = slim.conv2d(net, 32, 3, stride=1, scope='conv2')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool2')
 
+            # Convolution layer 3
+            net = slim.conv2d(net, 64, 3, stride=1, scope='conv3')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool3')
+
+            # Convolution layer 4
+            net = slim.conv2d(net, 128, 3, stride=1, scope='conv4')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool4')
+            
+            # Convolution layer 5
+            net = slim.conv2d(net, 256, 3, stride=1, scope='conv5')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool5')
+            
+            # Convolution layer 6
+            net = slim.conv2d(net, 512, 3, stride=1, scope='conv6')
+
+            net = slim.flatten(net, scope='flatten1')
+            
+        # Fully connected layer 1
+        net = slim.fully_connected(net, 4096, scope='fc1')
+
+        net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
+         # Fully connected layer 2
+        net = slim.fully_connected(net, 441,scope='fc2')
+
+        outputs = tf.reshape(tensor=net, shape=[batch_size,7,7,9])
+        
+    return outputs
 
 # In[6]:
 
@@ -337,7 +376,7 @@ def loss_op(y_pred, y_true):
     #loss_class = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=true_box_class, logits=pred_box_class)
     #loss_class = tf.Print(loss_class, [loss_class[0]],"=> loss_class: ",summarize=7*7)
     #loss_class = tf.reduce_sum(loss_class * class_mask) / (nb_class_box + 1e-6)
-    loss_class = tf.reduce_sum(tf.reduce_sum(tf.square(true_box_class - tf.nn.sigmoid(pred_box_class)), -1) * class_mask)
+    loss_class = tf.reduce_sum(tf.reduce_sum(tf.square(true_box_class - tf.nn.softmax(pred_box_class)), -1) * class_mask)
 
     #loss = (loss_xy + loss_wh) * LAMDA_COORD + loss_conf_obj + loss_conf_noobj * LAMDA_NOOBJ + loss_class
     loss = loss_class
