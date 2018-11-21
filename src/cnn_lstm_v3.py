@@ -55,10 +55,12 @@ model_saver = '../model_saver/'
 n_classes = 4
 n_input = [224,224,3]
 n_output = [7,7,9]
-batch_size = 32
+batch_size = 8
+
+# global parameters
 command = sys.argv[1]
 train_mode = sys.argv[2] if len(sys.argv) == 3 else '-a'
-
+training_class_only_arg = True if train_mode == '-co' or train_mode == '--class-only' else False
 
 # In[4]:
 
@@ -66,109 +68,15 @@ train_mode = sys.argv[2] if len(sys.argv) == 3 else '-a'
 data = np.load(data_path).item()
 train_len = data['X_train'].shape[0]
 test_len = data['X_test'].shape[0]
-#print(pd.read_csv(model_path))
 
 
 # In[5]:
 
-'''
-def cnn_model(input, model_path, is_training=True):
-    use_cudnn_on_gpu = True if CUDNN_GPU == 1 else False
-    my_model = pd.read_csv(model_path)
-    
-    ### Define some function for making layers
-    def make_input(input_, out_shape, name):
-        #result = tf.reshape(input_, [1,out_shape[0],out_shape[1],out_shape[2]], name=name)
-        result = input_/255.0
-        #result = tf.Print(result, [result[0]], "=> input: ", summarize=224*224*3)
-        #tf.summary.histogram(name, result)
-        return result
-
-    def make_conv(input_, in_channel, out_channel, filter_, strides, name):
-        
-        out_channel = int(out_channel)
-        strides = int(strides)
-        filter_ = list(map(int,filter_.split('x')))
-        filter_ = tf.Variable(tf.random_normal([filter_[0],filter_[1],in_channel,out_channel],stddev=0.1), name=name+'_filter')
-        # conv
-        result = tf.nn.conv2d(input=input_, 
-                         filter=filter_,
-                         strides=[1, strides, strides, 1],
-                         padding='SAME',
-                         use_cudnn_on_gpu=use_cudnn_on_gpu,
-                         name=name)
-        # add bias
-        #bias = tf.Variable(tf.random_normal([out_channel], stddev=0.1))
-        #result = tf.nn.bias_add(result, bias)
-        # batch norm
-        result = tf.layers.batch_normalization(result, momentum=0.1, epsilon=1e-5, training=is_training)
-        # relu
-        result = tf.nn.leaky_relu(result,alpha=0.1)
-        
-        return result
-        
-    def make_maxpool(input_, in_channel, filter_, strides, name):
-        strides = int(strides)
-        filter_ = list(map(int,filter_.split('x')))
-        result = tf.nn.max_pool(value=input_,
-                             ksize=[1, filter_[0], filter_[1], 1],
-                             strides=[1, strides, strides, 1],
-                             padding='SAME',
-                             name=name)
-        return result
-        
-    def make_flatten(input_, name):
-        return tf.contrib.layers.flatten(inputs=input_, scope=name)
-        
-    def make_fc(input_, out_shape, name):
-        result = tf.contrib.layers.fully_connected(inputs=input_,
-                                                    activation_fn=tf.nn.relu,
-                                                    num_outputs=int(out_shape[0]),
-                                                    scope=name)
-        #tf.summary.histogram(name, result)
-        return result
-    
-    def make_dropout(input_, name):
-        return tf.nn.dropout(input_, 0.75)
-    
-    def make_reshape(input_, out_shape, name):
-        result = tf.reshape(tensor=input_,
-                         shape=[tf.shape(input_)[0],out_shape[0],out_shape[1],out_shape[2]],
-                         name=name)
-        #tf.summary.histogram(name, result)
-        return result
-    
-    def make_softmax(input_, name):
-        result = tf.nn.softmax(input_, name=name)
-        return result
-    
-    ### Generate the model base on the model file
-    output = input
-    layer_match = {
-            'Input':      lambda input_, params, _:       make_input(input_, params[5], 'input_image'),
-            'Conv':       lambda input_, params, channel: make_conv(input_, channel, params[2], params[3], params[4], 'layer_'+str(params[0])),
-            'MaxPooling': lambda input_, params, channel: make_maxpool(input_, channel, params[3], params[4], 'layer_'+str(params[0])),
-            'Flatten':    lambda input_, params, _:       make_flatten(input_, 'layer_'+str(params[0])),
-            'Fc':         lambda input_, params, _:       make_fc(input_, params[5], 'layer_'+str(params[0])),
-            'Reshape':    lambda input_, params, _:       make_reshape(input_, params[5], 'layer_'+str(params[0])),
-            'Dropout':    lambda input_, params, _:       make_dropout(input_, 'layer_'+str(params[0])),
-            'Softmax':    lambda input_, params, _:       make_softmax(input_, 'layer_'+str(params[0])),
-        }
-    prev_channel = None
-    for layer in my_model.values:
-        # preprocessing layer input
-        layer[-1] = np.array(list(map(int,layer[-1].split('x'))))
-        # map layer
-        output = layer_match[layer[1]](output, layer, prev_channel)
-        prev_channel = layer[-1][-1]
-        
-    return output
-'''
-
-def cnn_model(input, model_path, is_training):
+def cnn_model(input, model_path, is_training, train_class_only):
     with slim.arg_scope([slim.fully_connected, slim.conv2d], 
+                            reuse=tf.AUTO_REUSE,
                             activation_fn=tf.nn.relu,
-                            biases_initializer=None,
+                            #biases_initializer=None,
                             normalizer_fn=slim.batch_norm,
                             normalizer_params={'is_training': is_training}):
     
@@ -198,85 +106,41 @@ def cnn_model(input, model_path, is_training):
             
             # Convolution layer 6
             net = slim.conv2d(net, 512, 3, stride=1, scope='conv6')
-            #net = slim.max_pool2d(net, 2, stride=2, scope='pool5')
+            #net = slim.conv2d(net, 512, 2, stride=1, scope='conv7')
+            #net = slim.conv2d(net, 256, 2, stride=1, scope='conv8')
+            #net = slim.max_pool2d(net, 2, stride=1, scope='pool6')
 
-            #net = slim.flatten(net, scope='flatten1')
-            net = slim.conv2d(net, 9, 1, stride=1, scope='conv7')
+            def class_only_branch(input_): 
+                net_ = slim.flatten(input_, scope='flatten1')
+                # net_ = slim.fully_connected(net_, 4096, scope='fc1')
+                # net_ = slim.dropout(net_, is_training=is_training, scope='dropout1')
+                net_ = slim.fully_connected(net_, 512, scope='fc2')
+                net_ = slim.dropout(net_, is_training=is_training, scope='dropout2')
+                net_ = slim.fully_connected(net_, 4, scope='fc3')
+                return net_
 
-            
-        # Fully connected layer 1
-        #net = slim.fully_connected(net, 4096, scope='fc1')
+            def all_branch(input_):
+                #net_ = slim.conv2d(net, 256, 1, stride=1, scope='conv7')
+                #net_ = slim.conv2d(net, 512, 3, stride=1, scope='conv8')
+                net_ = slim.flatten(input_, scope='flatten2')
+                net_ = slim.fully_connected(net_, 4096, scope='fc4')
+                net_ = slim.dropout(net_, is_training=is_training, scope='dropout3')
+                net_ = slim.fully_connected(net_, 441, scope='fc5')
+                net_ = tf.reshape(tensor=net_, shape=[tf.shape(net_)[0],7,7,9])
+                return net_
 
-        #net = slim.dropout(net, is_training=is_training, scope='dropout1')  # 0.5 by default
-         # Fully connected layer 2
-        #net = slim.fully_connected(net, 441,scope='fc2')
-
-        outputs = net#tf.reshape(tensor=net, shape=[batch_size,7,7,9])
+            outputs = tf.cond(tf.equal(train_class_only, tf.constant(True)), 
+                lambda: class_only_branch(net),
+                lambda: all_branch(net))
         
     return outputs
 
-# In[6]:
-
-
-def lstm_model(X, weights, biases, isTraining, num_classes):
-    # Preprocess data input
-    
-    # Create LSTM cell
-    lstm_cell = None;
-    if CUDNN_GPU == 0:
-        lstm_cell = tf.contrib.rnn.LSTMBlockCell(n_hidden, 
-                                                forget_bias=1.0)
-    else:
-        lstm_cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, 
-                                                   num_units=n_hidden,
-                                                   kernel_initializer=tf.initializers.random_uniform(-0.01, 0.01),
-                                                   bias_initializer=tf.initializers.constant(0))
-    
-    # Creates a recurrent neural network specified by RNNCell cell.
-    lstm_out, _ = tf.contrib.rnn.static_rnn(cell=lstm_cell, 
-                                            inputs=X,
-                                            dtype=tf.float32)
-    # Dropout layer
-    dropout = tf.layers.dropout(inputs=lstm_out, 
-                               rate=0.5,
-                               training=isTraining)
-    
-    # Fully connected layer
-    # weights_initializer is gaussian distribution
-    # bias_initializer is constant by zero
-    fc = tf.contrib.layers.fully_connected(inputs=dropout,
-                                            num_outputs=num_classes,
-                                            activation_fn=None,
-                                            weights_initializer=tf.initializers.truncated_normal(stddev=0.01),
-                                            bias_initializer=tf.initializers.constant(0))
-    
-    # Batch Norm + Scale layer
-    batch_norm = tf.layers.batch_normalization(inputs=fc,
-                                                axis=2,
-                                                training=isTraining)
-    
-    # ReLU activation
-    relu = tf.nn.relu_layer(batch_norm)
-    
-    lstm_last_output = outputs[-1]
-    return lstm_last_output
-
-
-# In[7]:
-
-
-# In[8]:
-
-
-# In[9]:
-
-
-
 def loss_op_class_only(y_pred, y_true):
-
-    
-
-    return loss;
+    #y_pred = tf.Print(y_pred, [y_pred], summarize=4*batch_size)
+    #labels = tf.one_hot(tf.squeeze(tf.argmax(y_true[...,5:], -1)), n_classes)
+    #labels = tf.reshape(tensor=labels,shape=[tf.shape(y_true)[0],4])    
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=y_pred, labels=y_true))    
+    return loss
 
 def loss_op(y_pred, y_true):
     #y_pred = tf.Print(y_pred, [y_pred[0]], "=> y_pred: ", summarize=7*7*9)
@@ -358,7 +222,7 @@ def loss_op(y_pred, y_true):
     conf_obj_mask = y_true[..., 4]
 
     ### class mask: simply the position of the ground truth boxes (the predictors)
-    class_mask = y_true[..., 4] * tf.ones(tf.shape(y_true[..., 4])) # convert y_true in interger type to float type
+    class_mask = y_true[..., 4]
 
 
     """
@@ -371,7 +235,6 @@ def loss_op(y_pred, y_true):
     loss_class = tf.reduce_sum(tf.reduce_sum(tf.square(true_box_class - tf.nn.softmax(pred_box_class)), -1) * class_mask, [1,2])
 
     loss = (loss_xy + loss_wh) * LAMDA_COORD + loss_conf_obj + loss_conf_noobj * LAMDA_NOOBJ + loss_class
-    #loss = loss_class
 
     return tf.reduce_mean(loss)
 
@@ -395,26 +258,22 @@ is_training = tf.placeholder(tf.bool, name='is_training')
 training_class_only = tf.placeholder(tf.bool, name='training_class_only')
 
 X = tf.placeholder(tf.float32, [None, n_input[0], n_input[1], n_input[2]], name='X_train')
-y = tf.placeholder(tf.float32, [None, n_output[0], n_output[1], n_output[2]], name='y_train')
+y = tf.cond(tf.equal(training_class_only, tf.constant(True)),
+    lambda: tf.placeholder(tf.float32, [None, n_classes], name='y_train_class_only'),
+    lambda: tf.placeholder(tf.float32, [None, n_output[0], n_output[1], n_output[2]], name='y_train'))
 
 # model
-cnn_model = cnn_model(X, model_path, is_training)
+cnn_model = cnn_model(X, model_path, is_training, training_class_only)
 
 # learning rate
-#global_step = tf.Variable(0, trainable=False, name='global_step')
-#learning_rate = tf.train.exponential_decay(
-#                        0.0001,  # Base learning rate.
-#                        global_step,  # Current index into the dataset.
-#                        train_len,  # Decay step.
-#                        0.95,  # Decay rate.
-#                        staircase=True,
-#                        name='learning_rate')
 learning_rate = 0.0001
 
 # loss 
-loss_op = tf.cond(tf.equal(training_class_only, tf.constant(True)), 
-                lambda: loss_op_class_only(cnn_model, y),
-                lambda: loss_op(cnn_model, y))
+loss_op = tf.cond(tf.equal(training_class_only, tf.constant(True)),
+        lambda: loss_op_class_only(cnn_model, y),
+        lambda: loss_op(cnn_model, y))
+
+#loss_op = loss_op(cnn_model, y, training_class_only)
 
 # optimizer corrP
 optimal = tf.train.AdamOptimizer(learning_rate, name='adam_optimizer')
@@ -422,8 +281,10 @@ optimal = tf.train.AdamOptimizer(learning_rate, name='adam_optimizer')
 train_op = optimal.minimize(loss_op, name='optimal_min')
 
 # evaluate model
-argmax_pred = tf.argmax(cnn_model[...,5:], 1)
-argmax_true = tf.argmax(y[...,5:], 1)
+argmax_pred, argmax_true = tf.cond(tf.equal(training_class_only, tf.constant(True)),
+    lambda: (tf.to_float(tf.argmax(cnn_model, 1)), 
+            tf.to_float(tf.argmax(y, 1))),
+    lambda: (0.,0.))
 correct_prediction = tf.equal(argmax_pred, argmax_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -467,37 +328,36 @@ def train():
         # Training cycle
         epoch = 0;
         while True:
+            total_acc = 0;
+            total_cost = 0;
             total_batch =  train_len // batch_size
+            #total_batch = 10;
             for batch in range(total_batch):
-            #for batch in range(3):
                 # lay batch tiep theo
                 batch_input = get_batch('X_train', batch) 
-                batch_label = get_batch('y_train', batch)
+                batch_label = get_batch('y_train_class_only', batch) if training_class_only_arg == True else get_batch('y_train', batch)
                 # chay train_op, loss_op, accuracy
                 _, cost, acc, summary = sess.run([train_op, loss_op, accuracy, merged_summary_op], 
                         feed_dict={
                             X: batch_input, 
                             y: batch_label, 
                             is_training: True,
-                            training_class_only: True if train_mode == '-co' or train_mode == '--class-only' else False
+                            training_class_only: training_class_only_arg
                         })
-
+                total_acc += acc
+                total_cost += cost
                 # Write logs at every iteration
                 tf_writer.add_summary(summary, epoch * total_batch + batch)
                 print("---Batch:" + ('%04d,' % (batch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
-                #if batch == 10:
-                #print(argmax_pred)
-                #break
                 
             epoch += 1;
             
-            #continue
             # hien thi ket qua sau moi epoch
-            print("Epoch:" + ('%04d,' % (epoch)) + ("cost={%.9f}, training accuracy %.5f" % (cost, acc)) + "\n")
-            #if epoch % 5 == 0:
+            print("Epoch:" + ('%04d,' % (epoch)) + ("average cost={%.9f}, average accuracy %.5f" % (total_cost/total_batch, total_acc/total_batch)) + "\n")
+            if epoch % 1 == 0:
                 # Luu tru variables vao disk.
-                #save_path = saver.save(sess, model_saver + 'nn_model_%04d.ckpt'%(epoch))
-                #print("Model saved in path: %s \n" % save_path)
+                save_path = saver.save(sess, model_saver + 'nn_model_%04d.ckpt'%(epoch))
+                print("Model saved in path: %s \n" % save_path)
 
 if command == 'train':
     train()
@@ -508,7 +368,7 @@ if command == 'train':
 # evaluate
 def evaluate():
     # TODO: Change the eval_epoch_num variable by a suitable number of epoch.
-    eval_epoch_num = 300
+    eval_epoch_num =  
 
     with tf.Session() as sess:
         saver.restore(sess, model_saver + 'nn_model_%04d.ckpt'%(eval_epoch_num))
@@ -517,13 +377,13 @@ def evaluate():
         for batch in range(total_batch):
             # get next batch
             batch_input = get_batch('X_test', batch) 
-            batch_label = get_batch('y_test', batch) 
+            batch_label = get_batch('y_test_class_only', batch) if training_class_only_arg == True else get_batch('y_test', batch)
             acc = sess.run(accuracy, 
                 feed_dict={
                     X:batch_input, 
                     y:batch_label, 
                     is_training:False,
-                    training_class_only: True if train_mode == '-co' or train_mode == '--class-only' else False
+                    training_class_only: training_class_only_arg 
                 })
 
             avg_acc += acc / total_batch
