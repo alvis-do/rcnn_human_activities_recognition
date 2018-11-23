@@ -4,56 +4,24 @@ import os
 import random
 import numpy as np
 import cv2
-np.set_printoptions(threshold=np.nan)
-data_path = "./data"
+#np.set_printoptions(threshold=np.nan)
 
-images_path = os.path.join(data_path, "images_copy")
-labels_path = os.path.join(data_path, "labels_copy")
+data_path = "../../dataset/human-action-dataset"
 
-images_list = open(os.path.join(data_path,"small-train-copy.txt"), "r").read().split("\n")
+images_list = open("small-train-copy.txt", "r").read().split("\n")
 
 classes = 4
 out_depth = (5+classes)
 
 def create(input_size, flip=1, crop=0.9, angle=10, color = 0.05):
     image_name = random.choice(images_list)
-    image_path = os.path.join(images_path, image_name)
+    image_path = os.path.join(data_path, image_name)
     label_name = image_name.split(".")[0] + ".txt"
-    label_path = os.path.join(labels_path, label_name)
+    label_path = os.path.join(data_path, label_name)
 
     #image
     im = cv2.imread(image_path).astype(np.float)
     h, w, _ = im.shape
-    '''
-        #rotate
-    rot = random.uniform(-angle, +angle)
-    M = cv2.getRotationMatrix2D((w/2, h/2), rot, 1)
-    im = cv2.warpAffine(im, M, (w, h))
-    
-        #crop
-    size = int(min(w, h) * random.uniform(crop, 1))
-    x_min = int(random.uniform(0, w - size))
-    y_min = int(random.uniform(0, h - size))
-    x_max = x_min + size
-    y_max = y_min + size
-    im = im[y_min:y_max, x_min:x_max, :]
-
-        #flip
-    fl = random.random() < 0.5
-    if fl:
-        im = cv2.flip(im, 1)
-    
-       #color
-    red = random.uniform(1-color, 1+color)
-    blu = random.uniform(1-color, 1+color)
-    gre = random.uniform(1-color, 1+color)
-
-    col = np.array([blu, gre, red])
-    im = im*col
-    im[im<0] = 0
-    im[im>out_depth] = out_depth
-    '''
-
         #resize to inputsize
     image = cv2.resize(im, (input_size, input_size), interpolation = cv2.INTER_CUBIC)
     image = image.reshape((1, input_size, input_size, 3))
@@ -73,25 +41,6 @@ def create(input_size, flip=1, crop=0.9, angle=10, color = 0.05):
             y0   = float(y0)
             w0   = float(w0)
             h0   = float(h0)
-            #convert back
-            '''
-                #rotate
-            rot = np.deg2rad(rot)
-            M = np.array([[np.cos(rot), np.sin(rot)], [-np.sin(rot), np.cos(rot)]])
-            x0, y0 = 0.5+np.matmul(M, np.array([x0-0.5, y0-0.5]))
-                #w0 h0 remain
-            
-                #crop
-            if x0 < x_min/w or x0 > x_max/w or y0 < y_min/h or y0 > y_max/h: continue
-            x0 = (x0*w - x_min)/size
-            y0 = (y0*h - y_min)/size
-            w0 = w0*w/size
-            h0 = h0*h/size
-
-                #flip
-            if fl:
-                x0 = 1-x0
-            '''
             label.append((cls, x0, y0, w0, h0))
     return image, label
 
@@ -101,12 +50,12 @@ def IoU(box1, box2):
     iou = min(w1, w2) * min(h1, h2)
     return iou
 
-# def which_anchor(box):
-#     anchor = (1,1)
-#     dist = []
-#     dist.append(IoU(anchor, box))
-#     i = dist.index(max(dist))
-#     return i
+def which_anchor(box):
+    anchor = (1,1)
+    dist = []
+    dist.append(IoU(anchor, box))
+    i = dist.index(max(dist))
+    return i
 
 def create_array(input_size):
     image, label = create(input_size)

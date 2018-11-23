@@ -2,7 +2,7 @@
 '''
 This script will randomize weights and train the tiny yolo from scratch.
 '''
-from data.datahandler_copy import shuffle
+from datahandler import get_batch
 import tensorflow as tf
 import numpy as np
 import os
@@ -57,44 +57,50 @@ with tf.Session() as sess:
     merge = tf.summary.merge_all()
 
 
-
-    hm_steps = 200
     sess.run(tf.global_variables_initializer())
 
     input_size = height
 
-    for batch in shuffle(batch_size, input_size):
-        step, Xp, Y1p = batch
-        if step == 0:
-            time.sleep(1)
-            continue
-        debugger = tf.logical_or(tf.is_nan(loss), tf.is_inf(loss))
+    #for batch in shuffle(batch_size, input_size):
+    epoch = 0
+    while epoch < 100:
+        loss_total = 0.
+        acc_total = 0.
+        for batch in get_batch(batch_size, input_size):
+            step, Xp, Y1p = batch
+            if step == 0:
+                time.sleep(1)
+                continue
+            debugger = tf.logical_or(tf.is_nan(loss), tf.is_inf(loss))
 
-        while (1):
-            d, l = sess.run([debugger, loss], 
-                feed_dict = {X:Xp, Y1:Y1p})
-            if (not d):
-                break
-            else:
-                print("Re-random variables!")
-                sess.run(tf.global_variables_initializer())
-        summary, _ , lossp, lxy, lwh, lobj, lnoobj, lp = sess.run(
-                    [merge, trainer, loss, loss_xy, loss_wh, loss_obj, loss_noobj, loss_p],
-                    feed_dict = {X: Xp, Y1: Y1p})
+            while (1):
+                d, l = sess.run([debugger, loss], 
+                    feed_dict = {X:Xp, Y1:Y1p})
+                if (not d):
+                    break
+                else:
+                    print("Re-random variables!")
+                    sess.run(tf.global_variables_initializer())
+            summary, _ , lossp, lxy, lwh, lobj, lnoobj, lp = sess.run(
+                        [merge, trainer, loss, loss_xy, loss_wh, loss_obj, loss_noobj, loss_p],
+                        feed_dict = {X: Xp, Y1: Y1p})
 
-        print("""Step {} : loss {}
-        loss_xy     = {}
-        loss_wh     = {}
-        loss_obj    = {}
-        loss_noobj  = {}
-        loss_p      = {}\n""".format(step, lossp, lxy, lwh, lobj, lnoobj, lp), end="\n")
+            loss_total += lossp
+            print("""Step {} : loss {}
+                            loss_xy     = {}
+                            loss_wh     = {}
+                            loss_obj    = {}
+                            loss_noobj  = {}
+                            loss_p      = {}\n""".format(step, lossp, lxy, lwh, lobj, lnoobj, lp), end="\n")
 
-        train_writer.add_summary(summary, step)
+            train_writer.add_summary(summary, step)
 
-        if (step % 20 ==0):
-            saver.save(sess, "./train_graph/tiny-yolo-{}.ckpt".format(step))
-        if (step>hm_steps):
-             saver.save(sess, "./train_graph/tiny-yolo-final.ckpt".format(step))       
+        print("""Epoch {}: loss_avg {}; acc_avg {}\n""".format(epoch, loss_total/step, acc_total/step))
+        epoch += 1
 
+        if (epoch % 10 == 0):
+            saver.save(sess, "./train_graph/tiny-yolo-{}.ckpt".format(epoch))
+
+    print("Training done!!!")
 
 
