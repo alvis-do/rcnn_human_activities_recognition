@@ -2,7 +2,8 @@
 '''
 This script will randomize weights and train the tiny yolo from scratch.
 '''
-from datahandler import get_batch
+from datahandler import get_batch, gridcell_to_boxes, save_boxes_to_file
+from mAP import calc_mAP
 import tensorflow as tf
 import numpy as np
 import os
@@ -22,14 +23,10 @@ with tf.Session() as sess:
         classes = 4
         out_height = height//32
         out_width = width//32
-        # out_channels = 3*(5+classes)
         out_channels = 5+classes
         h1 = g.get_tensor_by_name("YOLO/output1:0")
-        # h2 = g.get_tensor_by_name("YOLO/output2:0")
         Y1 = tf.placeholder(shape = (batch_size, out_height, out_width, out_channels), dtype = tf.float32, name = "groundtruth1")
-        # Y2 = tf.placeholder(shape = (batch_size, 2*out_height, 2*out_width, out_channels), dtype = tf.float32, name = "groundtruth2")
     
-        #loss
         #loss
         h = tf.reshape(h1, [batch_size * out_height * out_width, out_channels], name='h')
         Y = tf.reshape(Y1, [batch_size * out_height * out_width, out_channels], name='Y')
@@ -47,6 +44,8 @@ with tf.Session() as sess:
         optimizer = tf.train.AdamOptimizer(learning_rate = 1e-3)
         trainer = optimizer.minimize(loss, name = "trainer")
 
+
+
     if os.path.exists("./train_graph"):
             shutil.rmtree("./train_graph")
     os.mkdir("./train_graph")
@@ -56,18 +55,17 @@ with tf.Session() as sess:
     tf.summary.histogram("loss", loss)
     merge = tf.summary.merge_all()
 
-
     sess.run(tf.global_variables_initializer())
 
     input_size = height
 
     #for batch in shuffle(batch_size, input_size):
     epoch = 0
-    while epoch < 100:
-        loss_total = 0.
-        acc_total = 0.
+    while epoch < 1000:
+        loss_arr = np.array([])
+        mAP_arr = np.array([])
         for batch in get_batch(batch_size, input_size):
-            step, Xp, Y1p = batch
+            step, Xp, Y1p, from_idx = batch
             if step == 0:
                 time.sleep(1)
                 continue
@@ -81,24 +79,40 @@ with tf.Session() as sess:
                 else:
                     print("Re-random variables!")
                     sess.run(tf.global_variables_initializer())
-            summary, _ , lossp, lxy, lwh, lobj, lnoobj, lp = sess.run(
-                        [merge, trainer, loss, loss_xy, loss_wh, loss_obj, loss_noobj, loss_p],
+            summary, _ , lossp, lxy, lwh, lobj, lnoobj, lp, y_pred = sess.run(
+                        [merge, trainer, loss, loss_xy, loss_wh, loss_obj, loss_noobj, loss_p, h1],
                         feed_dict = {X: Xp, Y1: Y1p})
 
-            loss_total += lossp
+            # mAP y_pred
+            for i in batch_size:
+                file_name = str(from_idx + i)
+                y_pred_i = gridcell_to_boxes(y_pred[i])
+                save_boxes_to_file(y_pred_i, True, file_name)
+                y_true_i = gridcell_to_boxes(Y1p[i])
+                save_boxes_to_file(y_true_i, False, file_name)
+
+            b_mAP = calc_mAP()
+            shutil.rmtree("./ground-truth", ignore_errors=True)
+            shutil.rmtree("./predicted", ignore_errors=True)
+
+            mAP_arr.append(b_mAP)
+            loss_arr.append(lossp)
+
             print("""Step {} : loss {}
                             loss_xy     = {}
                             loss_wh     = {}
                             loss_obj    = {}
                             loss_noobj  = {}
-                            loss_p      = {}\n""".format(step, lossp, lxy, lwh, lobj, lnoobj, lp), end="\n")
+                            loss_p      = {}\n""".format(step - 1, lossp, lxy, lwh, lobj, lnoobj, lp), end="\n")
 
-            train_writer.add_summary(summary, step)
+            train_writer.add_summary(summary, step - 1)
 
-        print("""Epoch {}: loss_avg {}; acc_avg {}\n""".format(epoch, loss_total/step, acc_total/step))
+        print("Epoch {}: loss_avg {}; mAP_avg {}\n".format(epoch, np.mean(loss_arr), np.mean(mAP_arr)))
+        print("===============================================================")
+
         epoch += 1
 
-        if (epoch % 10 == 0):
+        if (epoch % 50 == 0):
             saver.save(sess, "./train_graph/tiny-yolo-{}.ckpt".format(epoch))
 
     print("Training done!!!")
