@@ -64,7 +64,7 @@ with tf.Session() as sess:
     while epoch < 1000:
         loss_arr = np.array([])
         mAP_arr = np.array([])
-        for batch in get_batch(batch_size, input_size):
+        for batch in get_batch(batch_size):
             step, Xp, Y1p, from_idx = batch
             if step == 0:
                 time.sleep(1)
@@ -84,7 +84,7 @@ with tf.Session() as sess:
                         feed_dict = {X: Xp, Y1: Y1p})
 
             # mAP y_pred
-            for i in batch_size:
+            for i in range(batch_size):
                 file_name = str(from_idx + i)
                 y_pred_i = gridcell_to_boxes(y_pred[i])
                 save_boxes_to_file(y_pred_i, True, file_name)
