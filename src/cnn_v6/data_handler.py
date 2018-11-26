@@ -61,6 +61,10 @@ def generate_data_dict():
 
 
 def get_dataset():
+	if not os.path.exists(video_dict_path):
+		generate_data_dict()
+		print("Generate data dictionary completed at {} !!!".format(video_dict_path))
+
 	data = np.load(video_dict_path).item()
 	return data['train_set'], data['test_set']
 
@@ -102,9 +106,15 @@ def get_clip(clips):
 
 	return np.array(frames), np.array(labels)
 
+def split_valid_set(train_set, epoch):
+	length = len(train_set)
+	batch_size = int(length * 0.2)
+	step = epoch % ((length // batch_size) + 1)
+	
+	to_ = min((step + 1) * batch_size, length)
+	from_ = (step * batch_size) if to_ <= length else (to_ - batch_size)
 
-if __name__ == "__main__":
-	enerate_data_dict()
-	data = np.load(video_dict_path).item()
-	print("Data example: [video_path, frames, video_length, label]\n{}".format(data['train_set'][0]))
-	print("Generate data dictionary completed at {} !!!".format(video_dict_path))
+	valid = train_set[from_:to_]
+	train = train_set[0:from_] + train_set[to_: length]
+		
+	return  train, valid
