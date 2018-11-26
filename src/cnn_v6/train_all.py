@@ -12,11 +12,12 @@ dir(tf.contrib)
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-cnn_model_num = 5 
+cnn_model_num = 5
 learning_rate = 0.0001
 lambda_loss_amount = 0.0015
 
-model_path = "{}/model_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'], cnn_model_num)
+model_path = "./graph/cnn_lstm_model.ckpt"
+#model_path = "{}/model_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'], cnn_model_num)
 saver = tf.train.import_meta_graph("{}.meta".format(model_path))
 
 # setup config for session
@@ -28,13 +29,19 @@ with tf.Session(config=config) as sess:
     g = sess.graph
     with g.name_scope("TRAIN_LSTM"):
 
+        X = g.get_tensor_by_name("CNN_MODEL/input:0")
+        #cnn_features = g.get_tensor_by_name("CNN_MODEL/out_features:0")
+
+        #lstm_X = g.get_tensor_by_name("LSTM_MODEL/input:0")
         isTraining = g.get_tensor_by_name("LSTM_MODEL/is_training:0")
-        X = g.get_tensor_by_name("LSTM_MODEL/input:0")
         y_pred = g.get_tensor_by_name("LSTM_MODEL/output:0")
         Y = tf.placeholder(tf.float32, [None, params['N_CLASSES']], name='y_true')
 
+        #cnn_features_reshape = tf.reshape(cnn_features, [tf.shape(Y)[0], params['N_FRAMES'], params['N_FEATURES']])
+        
         # Define loss and optimizer
         l2 = lambda_loss_amount * sum(tf.nn.l2_loss(tf_var) for tf_var in tf.trainable_variables())
+        #l2 = 0
         loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=Y, logits=y_pred)) + l2
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, name='lstm_adam')
         train_op = optimizer.minimize(loss_op)
@@ -44,25 +51,30 @@ with tf.Session(config=config) as sess:
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 
-    cnn_features = g.get_tensor_by_name("CNN_MODEL/out_features:0") 
-
     # init session
     sess.run(tf.global_variables_initializer())
 
-    train_set, validate_set, test_set = get_dataset()
+    train_set, test_set = get_dataset()
 
     # Start training
     epoch = 0
     while True:
-        lstm_input = []
-        for clips in get_batch(train_set, batch_size):
-            cnn_input, clip_labels = get_clip(clips)
-            for input_ in cnn_input:
-                features_ = sess.run([cnn_features],feed_dict={X: input_, isTraining: False})
-                lstm_input.append(features_)
+        for step, clips in get_batch(train_set, params['CNN_LSTM_BATCH_SIZE']):
+            if step == 0:
+                continue
 
-            _, loss, acc = sess.run([train_op, loss_op, accuracy], feed_dict={X: lstm_input, Y: clip_labels, isTraining: True})
-            print("Epoch {} - batch {}: Loss {} - Acc {}".format(epoch, step, loss, acc))
+            frames, labels = get_clip(clips)
+            input_ = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
+
+            _, loss, acc = sess.run([train_op, loss_op, accuracy], 
+                feed_dict={
+                    X: input_, 
+                    #lstm_X: cnn_features_reshape, 
+                    Y: labels, 
+                    isTraining: True
+                })
+
+            print("Epoch {} - batch {}: Loss {} - Acc {}".format(epoch, step - 1, loss, acc))
 
         epoch += 1
 

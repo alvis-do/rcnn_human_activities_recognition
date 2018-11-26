@@ -117,8 +117,10 @@ def create_lstm_net():
             
 
             isTraining = tf.placeholder(tf.bool, name='is_training')
-            X = tf.placeholder(tf.float32, [None, params['N_FRAMES'], params['N_FEATURES']], name='input')
-
+            #X = tf.placeholder(tf.float32, [None, params['N_FRAMES'], params['N_FEATURES']], name='input')
+            X = g.get_tensor_by_name("CNN_MODEL/out_features:0")
+            X = tf.reshape(X, [-1, params['N_FRAMES'], params['N_FEATURES']])
+            
             # Creates a recurrent neural network specified by RNNCell cell.
             lstm_out, lstm_state = lstm_cpu(X) if params['CUDNN_GPU'] == 0 else lstm_gpu(X)
             
