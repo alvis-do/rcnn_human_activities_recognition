@@ -8,3 +8,4 @@ src/cnn_v5/train_graph
 src/cnn_v6/__pycache__
 src/cnn_v6/graph
 src/cnn_v6/model_saver_cnn
+src/cnn_v6/model_saver_cnn_lstm
