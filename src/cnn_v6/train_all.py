@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import os
+import time
 from config import params
 from data_handler import get_dataset, get_batch, get_clip, split_valid_set
 
@@ -13,7 +14,7 @@ dir(tf.contrib)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 
-cnn_model_num = -1
+cnn_model_num = 30
 learning_rate = 0.0001
 lambda_loss_amount = 0.0015
 
@@ -42,7 +43,7 @@ with tf.Session(config=config) as sess:
         isTraining = g.get_tensor_by_name("LSTM_MODEL/is_training:0")
         Y = tf.placeholder(tf.float32, [None, params['N_CLASSES']], name='y_true')
         y_pred = g.get_tensor_by_name("LSTM_MODEL/output:0")
-
+        y_pred = y_pred[:,params['N_FRAMES'] - 1, :]
 
         # Define loss and optimizer
         l2 = lambda_loss_amount * sum(tf.nn.l2_loss(tf_var) for tf_var in tf.trainable_variables())
@@ -65,31 +66,42 @@ with tf.Session(config=config) as sess:
 
     # Start training
     epoch = 0
-    while True:
+    while epoch < 50:
         # split validation set
         train_set, valid_set = split_valid_set(train_valid_set, epoch)
-
+        
+        # Training on train dataset
+        print("Training on {} clips...".format(len(train_set)))
+        loss_avg = []
         for step, clips in get_batch(train_set, params['CNN_LSTM_BATCH_SIZE']):
             if step == 0:
                 continue
 
             frames, labels = get_clip(clips)
             input_ = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
+          
+            _, loss = sess.run([train_op, loss_op], feed_dict={X: input_, Y: labels, isTraining: True})
+            loss_avg.append(loss)
 
-            _, loss = sess.run([train_op, loss_op], 
-                feed_dict={
-                    X: input_, 
-                    Y: labels, 
-                    isTraining: True
-                })
+            print("---Batch {}: Loss {}".format(step - 1, loss))
 
+        # Testing on validation dataset
+        # print("Testing...")
+        # acc_avg = []
+        # for step, clips in get_batch(valid_set, params['CNN_LSTM_BATCH_SIZE']):
+        #     if (step == 0):
+        #         continue
+        #     valid_inputs, valid_labels = get_clip(clips)
+        #     input_ = np.reshape(valid_inputs, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
+           
+        #     acc = sess.run(accuracy, feed_dict={X: input_, Y: valid_labels, isTraining: False})
+        #     acc_avg.append(acc)
 
-            print("Epoch {} - batch {}: Loss {} - Acc on validation {}".format(epoch, step - 1, loss, acc))
-            break
-
+        # print("Epoch {} : Loss avg {} - Acc on validation {}".format(epoch, np.mean(loss_avg), np.mean(acc_avg)))
+        
+        ####
         epoch += 1
-
-        if epoch % 2 == 0:
+        if epoch % 1 == 0:
             save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_LSTM_MODEL_SAVER_PATH'], epoch))
             print("Model saved in path: %s" % save_path)
 

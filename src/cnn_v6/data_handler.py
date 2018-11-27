@@ -75,7 +75,7 @@ def get_batch(dataset, batch_size):
 			yield step, None
 		else:
 			yield step, clips
-			del clips
+			del clips, from_, to_
             
 		to_ = min((step + 1) * batch_size, len(dataset))
 		from_ = (step * batch_size) if to_ <= len(dataset) else (to_ - batch_size)

@@ -14,7 +14,7 @@ params = {
 	'OUTPUT_CHANNEL': 9,
 
 	'CNN_BATCH_SIZE' : 4,
-	'CNN_LSTM_BATCH_SIZE' : 1,
+	'CNN_LSTM_BATCH_SIZE' : 4,
 
 	'N_FRAMES': 16,
 	'N_FEATURES': 4096,

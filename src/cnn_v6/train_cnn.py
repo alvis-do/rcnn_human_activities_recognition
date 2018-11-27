@@ -79,10 +79,9 @@ with tf.Session(config=config) as sess:
     sess.run(init)
         
     epoch = 0
-        
-    while True:
-        #total_batch = train_len // params['CNN_BATCH_SIZE']
-        total_batch =  5
+    while epoch < 50:
+        total_batch = train_len // params['CNN_BATCH_SIZE']
+        #total_batch =  5
         for batch in range(total_batch):
             # lay batch tiep theo
             batch_input = get_batch('X_train', batch) 
@@ -104,7 +103,7 @@ with tf.Session(config=config) as sess:
 
             
         epoch += 1   
-        if epoch % 5 == 0:
+        if epoch % 10 == 0:
             save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'],epoch))
             print("Model saved in path: %s" % save_path)
             
