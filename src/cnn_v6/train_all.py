@@ -76,6 +76,8 @@ with tf.Session(config=config) as sess:
         for step, clips in get_batch(train_set, params['CNN_LSTM_BATCH_SIZE']):
             if step == 0:
                 continue
+            if len(clips) == 0:
+                break
 
             frames, labels = get_clip(clips)
             input_ = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
@@ -91,9 +93,12 @@ with tf.Session(config=config) as sess:
         # for step, clips in get_batch(valid_set, params['CNN_LSTM_BATCH_SIZE']):
         #     if (step == 0):
         #         continue
+        #     if len(clips) == 0:
+        #         break
+        #
         #     valid_inputs, valid_labels = get_clip(clips)
         #     input_ = np.reshape(valid_inputs, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
-           
+        #   
         #     acc = sess.run(accuracy, feed_dict={X: input_, Y: valid_labels, isTraining: False})
         #     acc_avg.append(acc)
 
