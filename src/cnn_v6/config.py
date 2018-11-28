@@ -13,7 +13,7 @@ params = {
 	'OUTPUT_HEIGHT': 6,
 	'OUTPUT_CHANNEL': 9,
 
-	'CNN_BATCH_SIZE' : 4,
+	'CNN_BATCH_SIZE' : 24,
 	'CNN_LSTM_BATCH_SIZE' : 4,
 
 	'N_FRAMES': 16,

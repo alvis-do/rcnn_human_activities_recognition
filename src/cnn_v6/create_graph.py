@@ -12,11 +12,22 @@ def create_cnn_net():
         with g.name_scope("CNN_MODEL"):
             # Create some wrappers for simplicity
             def conv2d(x, W, b, strides, padding_):
+                #x = tf.Print(x, [x[0]], summarize=10, message='X =>> ')
                 use_cudnn_on_gpu = True if params['CUDNN_GPU'] == 1 else False
                 # Conv2D wrapper, with bias and relu activation
                 x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding=padding_,use_cudnn_on_gpu=use_cudnn_on_gpu)
                 x = tf.nn.bias_add(x, b)
                 return tf.nn.relu(x)
+
+            # def conv2d(x, W, b, strides, padding_, out_channel = 0):
+            #     use_cudnn_on_gpu = True if params['CUDNN_GPU'] == 1 else False
+            #     scale  = tf.Variable(tf.random_normal(shape = [1, 1, 1, out_channel]), dtype = tf.float32, name = "scales")
+            #     strides = (1, strides, strides, 1)
+            #     conv = tf.nn.conv2d(x, W, strides, padding=padding_,use_cudnn_on_gpu=use_cudnn_on_gpu)
+            #     mean_conv, var_conv = tf.nn.moments(conv, axes = [1,2,3], keep_dims = True)
+            #     batchnorm = tf.nn.batch_normalization(conv, mean_conv, var_conv, b, scale, 1e-100, name = "batchnorm")
+            #     nonlin = tf.nn.relu(batchnorm)
+            #     return nonlin
 
 
             def maxpool2d(x, k, strides=2):
@@ -25,39 +36,60 @@ def create_cnn_net():
                                       padding='SAME')
 
             # Store layers weight & bias
+            # weights = {
+            #     # 5x5 conv, 1 input, 32 outputs
+            #     'wc1': tf.Variable(tf.random_uniform([7, 7, 3, 96],maxval=0.005)),
+            #     # 5x5 conv, 32 inputs, 64 outputs
+            #     'wc2': tf.Variable(tf.random_uniform([5, 5, 96, 256],maxval=0.005)),
+                
+                
+            #     'wc3': tf.Variable(tf.random_uniform([3, 3, 256, 384],maxval=0.005)),
+            #     'wc4': tf.Variable(tf.random_uniform([3, 3, 384, 384],maxval=0.005)),
+            #     'wc5': tf.Variable(tf.random_uniform([3, 3, 384, 256],maxval=0.005)),
+            #     'wc6': tf.Variable(tf.random_uniform([3, 3, 256, 512],maxval=0.005)),
+            #     'wc7': tf.Variable(tf.random_uniform([3, 3, 512, 512],maxval=0.005)),
+                
+            #     # fully connected, 7*7*64 inputs, 1024 outputs
+            #     'wd1': tf.Variable(tf.random_uniform([7*7*256, 4096],maxval=0.005)),
+            #     #'wd1': tf.Variable(tf.random_uniform([46080, 4096])),
+            #     # fully connected, 7*7*64 inputs, 1024 outputs
+            #     'wd2': tf.Variable(tf.random_uniform([4096, params['N_FEATURES']],maxval=0.005)),
+            #     # 1024 inputs, 4 outputs (class prediction)
+            #     'out': tf.Variable(tf.random_uniform([params['N_FEATURES'], params['N_CLASSES']],maxval=0.005))
+            # }
             weights = {
                 # 5x5 conv, 1 input, 32 outputs
-                'wc1': tf.Variable(tf.random_uniform([7, 7, 3, 96],minval=-0.05, maxval=0.05)),
+                'wc1': tf.Variable(tf.random_normal([7, 7, 3, 96], stddev=0.1)),
                 # 5x5 conv, 32 inputs, 64 outputs
-                'wc2': tf.Variable(tf.random_uniform([5, 5, 96, 256],minval=-0.05, maxval=0.05)),
+                'wc2': tf.Variable(tf.random_normal([5, 5, 96, 256], stddev=0.0)),
                 
                 
-                'wc3': tf.Variable(tf.random_uniform([3, 3, 256, 384],minval=-0.05, maxval=0.05)),
-                'wc4': tf.Variable(tf.random_uniform([3, 3, 384, 384],minval=-0.05, maxval=0.05)),
-                'wc5': tf.Variable(tf.random_uniform([3, 3, 384, 256],minval=-0.05, maxval=0.05)),
-                'wc6': tf.Variable(tf.random_uniform([3, 3, 256, 512],minval=-0.05, maxval=0.05)),
-                'wc7': tf.Variable(tf.random_uniform([3, 3, 512, 512],minval=-0.05, maxval=0.05)),
+                'wc3': tf.Variable(tf.random_normal([3, 3, 256, 384], stddev=0.1)),
+                'wc4': tf.Variable(tf.random_normal([3, 3, 384, 384], stddev=0.1)),
+                'wc5': tf.Variable(tf.random_normal([3, 3, 384, 256], stddev=0.1)),
+                'wc6': tf.Variable(tf.random_normal([3, 3, 256, 512], stddev=0.1)),
+                'wc7': tf.Variable(tf.random_normal([3, 3, 512, 512], stddev=0.1)),
                 
                 # fully connected, 7*7*64 inputs, 1024 outputs
-                'wd1': tf.Variable(tf.random_uniform([7*7*256, 4096],minval=-0.05, maxval=0.05)),
-                #'wd1': tf.Variable(tf.random_uniform([46080, 4096])),
+                'wd1': tf.Variable(tf.random_normal([7*7*256, 4096], stddev=0.1)),
+                #'wd1': tf.Variable(tf.random_normal([46080, 4096])),
                 # fully connected, 7*7*64 inputs, 1024 outputs
-                'wd2': tf.Variable(tf.random_uniform([4096, 4096],minval=-0.05, maxval=0.05)),
+                'wd2': tf.Variable(tf.random_normal([4096, params['N_FEATURES']], stddev=0.1)),
                 # 1024 inputs, 4 outputs (class prediction)
-                'out': tf.Variable(tf.random_uniform([4096, params['N_CLASSES']],minval=-0.05, maxval=0.05))
+                'out': tf.Variable(tf.random_normal([params['N_FEATURES'], params['N_CLASSES']], stddev=0.1))
             }
 
             biases = {
-                'bc1': tf.Variable(tf.random_normal([96])),
-                'bc2': tf.Variable(tf.random_normal([256])),
-                'bc3': tf.Variable(tf.random_normal([384])),
-                'bc4': tf.Variable(tf.random_normal([384])),
-                'bc5': tf.Variable(tf.random_normal([256])),
-                'bc6': tf.Variable(tf.random_normal([512])),
-                'bc7': tf.Variable(tf.random_normal([512])),
-                'bd1': tf.Variable(tf.random_normal([4096])),
-                'bd2': tf.Variable(tf.random_normal([4096])),
-                'out': tf.Variable(tf.random_normal([params['N_CLASSES']]))
+                'bc1': tf.Variable(tf.random_normal([96], stddev=0.1)),
+                'bc2': tf.Variable(tf.random_normal([256], stddev=0.1)),
+                'bc3': tf.Variable(tf.random_normal([384], stddev=0.1)),
+                'bc4': tf.Variable(tf.random_normal([384], stddev=0.1)),
+                'bc5': tf.Variable(tf.random_normal([256], stddev=0.1)),
+                'bc6': tf.Variable(tf.random_normal([512], stddev=0.1)),
+                'bc7': tf.Variable(tf.random_normal([512], stddev=0.1)),
+                'bd1': tf.Variable(tf.random_normal([4096], stddev=0.1)),
+                'bd2': tf.Variable(tf.random_normal([params['N_FEATURES']], stddev=0.1)),
+                'out': tf.Variable(tf.random_normal([params['N_CLASSES']], stddev=0.1))
             }
 
             # Convolution Layer
@@ -75,8 +107,6 @@ def create_cnn_net():
             conv5 = conv2d(conv4, weights['wc5'], biases['bc5'],1,'SAME')
             conv5 = maxpool2d(conv5, k=3)
             
-            #Pre-train
-            # Fully connected layer
             fc1 = tf.reshape(conv5, [-1, weights['wd1'].get_shape().as_list()[0]])
             fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
             fc1 = tf.nn.relu(fc1)
@@ -89,6 +119,45 @@ def create_cnn_net():
             out = tf.add(tf.matmul(fc2, weights['out']), biases['out'])
             out = tf.identity(out, name='out_class')
 
+            # fc = tf.contrib.layers.conv2d(X, 96, 7, 2, 'VALID')
+            # fc = tf.contrib.layers.max_pool2d(fc, 3)
+            # fc = tf.contrib.layers.conv2d(fc, 256, 5, 2, 'VALID')
+            # fc = tf.contrib.layers.max_pool2d(fc, 3)
+            # fc = tf.contrib.layers.conv2d(fc, 384, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.conv2d(fc, 384, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.conv2d(fc, 256, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.max_pool2d(fc, 3)
+            # flatten = tf.contrib.layers.flatten(fc)
+            # fc = tf.contrib.layers.fully_connected(flatten, params['N_FEATURES'])
+            # #fc = tf.contrib.layers.dropout(fc, 0.75)
+            # fc = tf.contrib.layers.fully_connected(fc, params['N_FEATURES'])
+            # fc = tf.identity(fc, name='out_features')
+            # #fc = tf.contrib.layers.dropout(fc, 0.75)
+            # fc = tf.contrib.layers.fully_connected(fc, params['N_CLASSES'], activation_fn=None)
+            # out = tf.identity(fc, name='out_class')
+
+
+            # fc = tf.contrib.layers.conv2d(X, 96, 7, 2, 'VALID')
+            # fc = tf.contrib.layers.max_pool2d(fc, 3)
+            # fc = tf.contrib.layers.conv2d(fc, 256, 5, 2, 'VALID')
+            # fc = tf.contrib.layers.max_pool2d(fc, 3)
+            # fc = tf.contrib.layers.conv2d(fc, 384, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.max_pool2d(fc, 2)
+            # fc = tf.contrib.layers.conv2d(fc, 512, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.conv2d(fc, 512, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.conv2d(fc, 256, 3, 1, 'SAME')
+            # fc = tf.contrib.layers.max_pool2d(fc, 2, 1)
+
+            # flatten = tf.contrib.layers.flatten(fc)
+            # fc = tf.contrib.layers.fully_connected(flatten, params['N_FEATURES'])
+            # fc = tf.contrib.layers.dropout(fc, 0.75)
+            # fc = tf.contrib.layers.fully_connected(fc, params['N_FEATURES'])
+            # fc = tf.identity(fc, name='out_features')
+            # fc = tf.contrib.layers.dropout(fc, 0.75)
+            # fc = tf.contrib.layers.fully_connected(fc, params['N_CLASSES'])
+            # out = tf.identity(fc, name='out_class')
+
+            return out
     
 
 
@@ -125,11 +194,11 @@ def create_lstm_net():
             lstm_out, lstm_state = lstm_cpu(X) if params['CUDNN_GPU'] == 0 else lstm_gpu(X)
             
             # Dropout layer
-            dropout = tf.layers.dropout(inputs=lstm_out, rate=0.5, training=isTraining)
+            #dropout = tf.layers.dropout(inputs=lstm_out, rate=0.5, training=isTraining)
             
             # Fully connected layer
             out = tf.layers.dense(
-                    tf.layers.batch_normalization(dropout),
+                    tf.layers.batch_normalization(lstm_out),
                     params['N_CLASSES'], activation=None, 
                     kernel_initializer=tf.orthogonal_initializer())
 

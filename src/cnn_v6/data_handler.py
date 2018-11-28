@@ -8,17 +8,12 @@ from config import params
 video_src_path = params['VIDEO_SRC_PATH']
 video_dict_path = video_src_path + '/video_dict.npy'
 
+
 video_step = 5 # Cu 5 frame thi lay 1 frame
 
-def generate_data_dict():
-	vs = glob.glob(video_src_path + "/**/*.mpg", recursive=True)
-	#vs = glob.glob("{}/basketball/v_shooting_24/v_shooting_24_01.mpg".format(video_src_path), recursive=True)
+def get_info(videos):
 	v_info = []
-	relate_path_ = []
-	class_ = []
-	frames_ = []
-	length_ = []
-	for v in vs:
+	for v in videos:
 		cap = cv2.VideoCapture(v)
 		l_ = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 		rp = v.replace(video_src_path,'')
@@ -42,20 +37,25 @@ def generate_data_dict():
 					f_to = 0
 					continue
 			f_from = f_to
-			# length_.append(l_)
-			# relate_path_.append(rp)
-			# class_.append(c_)
-			# frames_.append(f_)
 			v_info.append([[rp], f_, [l_], [c_]])
+	return v_info
+
+def generate_data_dict():
+	with open("video_train.txt") as f:
+		train_v_info = get_info([(video_src_path + x.strip()) for x in f.readlines()])
+
+	with open("video_test.txt") as f:
+		test_v_info = get_info([(video_src_path + x.strip()) for x in f.readlines()])
+
 
 	# Shuffle
-	np.random.shuffle(v_info)
+	np.random.shuffle(train_v_info)
 
 	# Split data set
-	data_len = len(v_info)
-	train_len = int(data_len * 0.8)
+	#data_len = len(v_info)
+	#train_len = int(data_len * 0.8)
 
-	data_dict = {'train_set': v_info[0:train_len], 'test_set': v_info[train_len:]}
+	data_dict = {'train_set': train_v_info, 'test_set': test_v_info}
 	# v_info = {"video_path": relate_path_, "frames": frames_, "frame_count": length_, "label": class_}
 	np.save(video_dict_path, data_dict)
 
@@ -84,7 +84,7 @@ def get_batch(dataset, batch_size):
 		step += 1
 
 
-def get_clip(clips): 
+def get_clip(clips, stride=1): 
 	frames = []
 	labels = []
 	for clip in clips:
@@ -93,12 +93,13 @@ def get_clip(clips):
 		clip_label[clip[3][0]] = 1
 		clip_frames = []
 		cap = cv2.VideoCapture(video_src_path + clip[0][0])
-		
-		for i in clip[1]:
-			cap.set(cv2.CAP_PROP_POS_FRAMES, i)
-			_, frame = cap.read()
-			frame = cv2.resize(frame, (params['INPUT_WIDTH'], params['INPUT_HEIGHT']), interpolation = cv2.INTER_CUBIC)
-			clip_frames.append(frame)
+		#print(clip[1])
+		for i, v in enumerate(clip[1]):
+			if (i % stride == 0): 
+				cap.set(cv2.CAP_PROP_POS_FRAMES, v)
+				_, frame = cap.read()
+				frame = cv2.resize(frame, (params['INPUT_WIDTH'], params['INPUT_HEIGHT']), interpolation = cv2.INTER_CUBIC)
+				clip_frames.append(frame)
 		
 
 		frames.append(clip_frames)
@@ -118,3 +119,6 @@ def split_valid_set(train_set, epoch):
 	train = train_set[0:from_] + train_set[to_: length]
 		
 	return  train, valid
+
+if __name__ == "__main__":
+	generate_data_dict()
