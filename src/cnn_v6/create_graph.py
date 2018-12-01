@@ -144,8 +144,8 @@ def create_lstm_net():
                 with g.name_scope("lstm_cpu"):
                     X_seq = tf.unstack(X, axis=1)
 
-                    lstm_cell = tf.contrib.rnn.LSTMBlockCell(n_hidden, forget_bias=1.0)
-                    multi_cell = tf.contrib.rnn.MultiRNNCell([lstm_cell] * num_layers)
+                    cells = [tf.contrib.rnn.LSTMBlockCell(n_hidden, forget_bias=1.0) for i in range(num_layers)]
+                    multi_cell = tf.contrib.rnn.MultiRNNCell(cells)
                     output, state = tf.contrib.rnn.static_rnn(multi_cell, X_seq, initial_state=init_state, dtype=tf.float32)
                     #output = tf.stack(output, axis=1)
                     #print(state)

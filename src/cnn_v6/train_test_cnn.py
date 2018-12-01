@@ -96,14 +96,15 @@ with tf.Session(config=config) as sess:
     stride = 4
     epoch = 0
     acc_max = 0
+    gl_step = 0
     while True:
         if train_mode:
             train_len = len(train_set) * (params['N_FRAMES'] // stride)
             batch_size = params['CNN_BATCH_SIZE'] // stride
             print("Training {} frames ...".format(train_len))
             total_batch = math.ceil(train_len // batch_size)
-            loss_sum = 0.
-            acc_sum = 0.
+            loss_sum = []
+            acc_sum = []
             for batch, clips in get_batch(train_set, batch_size):
                 if batch == 0:
                     continue
@@ -123,17 +124,20 @@ with tf.Session(config=config) as sess:
                 batch_label = batch_label[s]
 
                 _, loss, acc, summ, wc1 = sess.run([train_op, loss_op, accuracy, merged_summary_op, cnn_wc1], feed_dict={X: batch_input, Y: batch_label})
-                loss_sum += loss
-                acc_sum += acc
-                # print("weight sum: {}".format(np.sum(wc1)))
+                loss_sum.append(loss)
+                acc_sum.append(acc)
 
-                tf_writer.add_summary(summ, batch - 1 + epoch * total_batch)
+                print("-- batch x")
 
-                if batch%display_step == 0:
-                    print("Epoch {}, Batch {} Loss = {}, Training Accuracy = {}".format(epoch, batch, loss_sum / batch, acc_sum / batch))
+                tf_writer.add_summary(summ, gl_step)
+                gl_step += 1
+                
+                # if batch%display_step == 0:
+                #     print("Epoch {}, Batch {} Loss = {}, Training Accuracy = {}".format(epoch, batch, loss_sum / batch, acc_sum / batch))
+            print("Epoch {}: Loss = {}, Training Accuracy = {}".format(epoch, np.mean(loss_sum), np.mean(acc_sum)))
                     
 
-        print("Testing {} frames ...".format(len(test_set) * (params['N_FRAMES'] // stride)))
+        #print("Testing {} frames ...".format(len(test_set) * (params['N_FRAMES'] // stride)))
         arr_acc_test = []
         for batch_test, clips in get_batch(test_set, params['CNN_BATCH_SIZE'] // stride):
             if batch_test == 0:
@@ -145,6 +149,7 @@ with tf.Session(config=config) as sess:
             batch_input_test = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
             acc_test = sess.run(accuracy, feed_dict={X:batch_input_test, Y:batch_label_test})
             arr_acc_test.append(acc_test)
+
         avg_acc_test = np.mean(arr_acc_test)
         print("Accuracy on test set: {}".format(avg_acc_test))
         

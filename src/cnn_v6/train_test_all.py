@@ -21,8 +21,8 @@ learning_rate = 0.0001
 
 train_mode = True if sys.argv[1] == '--train' else False
 
-model_path = "./graph/cnn_lstm_model.ckpt"
-# model_path = "./model_saver_cnn/graph_model_train_cnn.ckpt"
+# model_path = "./graph/cnn_lstm_model.ckpt"
+model_path = "./model_saver_cnn/model_1.ckpt"
 saver = tf.train.import_meta_graph("{}.meta".format(model_path))
 
 
@@ -62,7 +62,9 @@ with tf.Session(config=config) as sess:
         losses = tf.map_fn(lambda logits: tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=Y), logits_series) # (16, ?)
         # losses = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits_series[-1], labels=Y)
         loss_op = tf.reduce_mean(losses)
-        train_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss_op)
+        loss_op = tf.identity(loss_op, name='lstm_loss_op')
+
+        train_op = tf.train.AdagradOptimizer(learning_rate, name='lstm_Adagrad').minimize(loss_op)
         #loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=Y, logits=y_pred))
         #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, name='lstm_adam')
         # train_op = optimizer.minimize(loss_op)
@@ -72,6 +74,14 @@ with tf.Session(config=config) as sess:
         # correct_pred = [tf.equal(tf.argmax(prediction, 1), tf.argmax(Y, 1)) for prediction in predictions_series_stack]
         correct_pred = tf.map_fn(lambda x: tf.cast(tf.equal(tf.argmax(x, 1), tf.argmax(Y, 1)), tf.float32), predictions_series) # (16, ?)
         accuracy = tf.reduce_mean(correct_pred)
+        accuracy = tf.identity(accuracy, name='lstm_accuracy')
+
+
+        # CNN
+        try:
+            cnn_Y = g.get_tensor_by_name("TRAIN_CNN/y_train:0")
+        except:
+            cnn_Y = None
 
         # Scalar summary
         tf.summary.scalar("loss_op", loss_op)
@@ -89,6 +99,7 @@ with tf.Session(config=config) as sess:
     # Start training
     epoch = 0
     acc_max = 0
+    gl_step = 0
     while True:
         # count = 0
         _current_state = np.zeros((num_layers_lstm, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden_lstm))
@@ -108,38 +119,45 @@ with tf.Session(config=config) as sess:
                     break
                 #print(step)
                 frames, labels = get_clip(clips)
-
+                # print(labels)
                 #print(cnn_labels)
                 input_ = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
 
-                # cnn_y_true = np.repeat(labels, params['N_FRAMES'], axis=0)
                 # cnn_out = sess.run(cnn_y_pred, feed_dict={cnn_X: input_, cnn_Y: cnn_y_true})
                 # lstm_input = np.reshape(cnn_out, (-1, params['N_FRAMES'], params['N_CLASSES']))
                 #print(input_[0,0,0])
                 #print("Y =>> {}".format(labels))
-                _, lstm_loss, lstm_acc, summ, _current_state, _predictions_series = sess.run([train_op, loss_op, accuracy, merged_summary_op, current_state, predictions_series], 
-                    feed_dict={X: input_, Y: labels, isTraining: True, init_state: _current_state})
+                feed_dict = None
+                if cnn_Y == None:
+                    feed_dict = {X: input_, Y: labels, isTraining: True, init_state: _current_state}
+                else:
+                    cnn_y_true = np.repeat(labels, params['N_FRAMES'], axis=0)
+                    feed_dict = {X: input_, Y: labels, isTraining: True, init_state: _current_state, cnn_Y: cnn_y_true}
+
+                _, lstm_loss, lstm_acc, summ, _current_state, _predictions_series = \
+                    sess.run([train_op, loss_op, accuracy, merged_summary_op, current_state, predictions_series], feed_dict=feed_dict)
                 
-                # print(np.array(_predictions_series).shape) # (16, batch_size, 4)
+                # print("---Batch {}: loss {} --- acc {}".format(step, lstm_loss, lstm_acc))
+                # print(np.array(_predictions_series)) # (16, batch_size, 4)
                 # print(np.array(_current_state).shape) # (num_layers, 2, batch_size, 512)
 
                 lstm_loss_avg.append(lstm_loss)
                 lstm_acc_avg.append(lstm_acc) 
 
-                gl_step = step - 1 + epoch * total_step
                 tf_writer.add_summary(summ, gl_step)
-
+                gl_step += 1;
+                # break
                 # count += 1
                 # if (count > 4):
                 #     break
                 # break
-            print("""---Epoch {}: lstm_loss {}; lstm_acc {}""".format(epoch, np.mean(lstm_loss_avg), np.mean(lstm_acc_avg)))
+            print("""Epoch {}: lstm_loss {}; lstm_acc {}""".format(epoch, np.mean(lstm_loss_avg), np.mean(lstm_acc_avg)))
         #         break
         # epoch += 1
         # continue
         # Testing on  dataset
         tmp_set = valid_set if train_mode else test_set
-        print("Test lstm net ...")
+        #print("Test lstm net ...")
         arr_acc_test = []
         for step, clips in get_batch(tmp_set, params['CNN_LSTM_BATCH_SIZE']):
             if (step == 0):
@@ -150,18 +168,21 @@ with tf.Session(config=config) as sess:
             valid_inputs, valid_labels = get_clip(clips)
             input_ = np.reshape(valid_inputs, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
           
-            acc = sess.run(accuracy, feed_dict={X: input_, Y: valid_labels, isTraining: False, init_state: _current_state})
+            acc, _predictions_series = sess.run([accuracy, predictions_series], feed_dict={X: input_, Y: valid_labels, isTraining: False, init_state: _current_state})
             arr_acc_test.append(acc)
+            # print(valid_labels)
+            # print(_predictions_series)
+            # break
         avg_acc_test = np.mean(arr_acc_test)
-        print("Epoch {} : Acc on validation {}".format(epoch, avg_acc_test))
+        print("Acc on validation {}".format(avg_acc_test))
 
         if not train_mode:
             break
 
         ####
         epoch += 1
-        #if epoch % 5 == 0:
-        if (avg_acc_test > acc_max):
+        if epoch % 5 == 0:
+        # if (avg_acc_test > acc_max):
             save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_LSTM_MODEL_SAVER_PATH'], epoch))
             print("Model saved in path: %s" % save_path)
             acc_max = avg_acc_test

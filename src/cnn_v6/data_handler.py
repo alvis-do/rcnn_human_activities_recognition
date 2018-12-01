@@ -78,7 +78,7 @@ def get_batch(dataset, batch_size):
 			del clips, from_, to_
             
 		to_ = min((step + 1) * batch_size, len(dataset))
-		from_ = (step * batch_size) if to_ <= len(dataset) else (to_ - batch_size)
+		from_ = (step * batch_size) if to_ < len(dataset) else (to_ - batch_size)
 
 		clips = dataset[from_:to_]
 		step += 1
@@ -113,11 +113,11 @@ def split_valid_set(train_set, epoch):
 	step = epoch % ((length // batch_size) + 1)
 	
 	to_ = min((step + 1) * batch_size, length)
-	from_ = (step * batch_size) if to_ <= length else (to_ - batch_size)
+	from_ = (step * batch_size) if to_ < length else (to_ - batch_size)
 
 	valid = train_set[from_:to_]
 	train = train_set[0:from_] + train_set[to_: length]
-		
+	
 	return  train, valid
 
 if __name__ == "__main__":
