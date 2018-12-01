@@ -13,6 +13,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import os, sys
+import math
 from config import params
 from data_handler import get_dataset, get_batch, get_clip, split_valid_set
 
@@ -26,13 +27,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 #train_set, test_set = get_dataset()
 
 
-
-# data = np.load(params['DATA_PATH']).item()
-# data['X_train'] = data['X_train']
-# data['X_test'] = data['X_test']
-# train_len = data['X_train'].shape[0]
-# test_len = data['X_test'].shape[0]
-
  # Get data set
 train_set, test_set = get_dataset()
 
@@ -41,7 +35,7 @@ train_set, test_set = get_dataset()
 # Training Parameters
 learning_rate = 0.0001
 num_steps = 200
-display_step = 10
+display_step = 1
 
 
 
@@ -70,6 +64,9 @@ with tf.Session(config=config) as sess:
         logits = g.get_tensor_by_name("CNN_MODEL/out_class:0")  
         # logits = tf.Print(logits, [logits], summarize=4*32)
 
+        cnn_wc1 = g.get_tensor_by_name("CNN_MODEL/wc1:0");
+
+
         prediction = tf.nn.softmax(logits)
         #prediction = tf.Print(prediction,[prediction],summarize=20)
 
@@ -86,6 +83,8 @@ with tf.Session(config=config) as sess:
         tf.summary.scalar("accuracy", accuracy)
         merged_summary_op = tf.summary.merge_all()
 
+        #saver.save(sess, "{}/graph_model_train_cnn.ckpt".format(params['CNN_MODEL_SAVER_PATH']))
+
 
     tf_writer = tf.summary.FileWriter(params['CNN_MODEL_SAVER_PATH'])
 
@@ -96,12 +95,16 @@ with tf.Session(config=config) as sess:
         
     stride = 4
     epoch = 0
-    while epoch < 10:
+    acc_max = 0
+    while True:
         if train_mode:
-            print("Training {} frames ...".format(len(train_set) * (params['N_FRAMES'] // stride)))
-            #total_batch = train_len // params['CNN_BATCH_SIZE']
-            #total_batch =  5
-            for batch, clips in get_batch(train_set, params['CNN_BATCH_SIZE'] // stride):
+            train_len = len(train_set) * (params['N_FRAMES'] // stride)
+            batch_size = params['CNN_BATCH_SIZE'] // stride
+            print("Training {} frames ...".format(train_len))
+            total_batch = math.ceil(train_len // batch_size)
+            loss_sum = 0.
+            acc_sum = 0.
+            for batch, clips in get_batch(train_set, batch_size):
                 if batch == 0:
                     continue
                 if len(clips) == 0:
@@ -119,16 +122,19 @@ with tf.Session(config=config) as sess:
                 batch_input = batch_input[s]
                 batch_label = batch_label[s]
 
-                _, loss, acc, summ = sess.run([train_op, loss_op, accuracy, merged_summary_op], feed_dict={X: batch_input, Y: batch_label})
+                _, loss, acc, summ, wc1 = sess.run([train_op, loss_op, accuracy, merged_summary_op, cnn_wc1], feed_dict={X: batch_input, Y: batch_label})
+                loss_sum += loss
+                acc_sum += acc
+                # print("weight sum: {}".format(np.sum(wc1)))
 
-                tf_writer.add_summary(summ)
+                tf_writer.add_summary(summ, batch - 1 + epoch * total_batch)
 
                 if batch%display_step == 0:
-                    print("Epoch {}, Batch {} Loss = {}, Training Accuracy = {}".format(epoch, batch, loss, acc))
+                    print("Epoch {}, Batch {} Loss = {}, Training Accuracy = {}".format(epoch, batch, loss_sum / batch, acc_sum / batch))
                     
 
         print("Testing {} frames ...".format(len(test_set) * (params['N_FRAMES'] // stride)))
-        avg_acc_test = []
+        arr_acc_test = []
         for batch_test, clips in get_batch(test_set, params['CNN_BATCH_SIZE'] // stride):
             if batch_test == 0:
                 continue
@@ -138,15 +144,18 @@ with tf.Session(config=config) as sess:
             batch_label_test = np.repeat(batch_label, stride, axis=0)
             batch_input_test = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
             acc_test = sess.run(accuracy, feed_dict={X:batch_input_test, Y:batch_label_test})
-            avg_acc_test.append(acc_test)
-        print("Accuracy on test set: {}".format(np.mean(avg_acc_test)))
+            arr_acc_test.append(acc_test)
+        avg_acc_test = np.mean(arr_acc_test)
+        print("Accuracy on test set: {}".format(avg_acc_test))
         
         if not train_mode:
             break
 
         epoch += 1   
-        if epoch % 1 == 0:
+        #if epoch % 1 == 0:
+        if (avg_acc_test > acc_max):
             save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'],epoch))
             print("Model saved in path: %s" % save_path)
+            acc_max = avg_acc_test
             
      
