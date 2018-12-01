@@ -49,9 +49,11 @@ model_path = "./graph/cnn_lstm_model.ckpt"
 saver = tf.train.import_meta_graph("{}.meta".format(model_path))
 
 
+# setup config for session
 config = tf.ConfigProto(log_device_placement=False)
 config.gpu_options.allow_growth = True
 config.gpu_options.per_process_gpu_memory_fraction = 1.
+
 
 with tf.Session(config=config) as sess:
     # Construct model
@@ -127,7 +129,7 @@ with tf.Session(config=config) as sess:
                 loss_sum.append(loss)
                 acc_sum.append(acc)
 
-                print("-- batch x")
+                # print("-- batch x")
 
                 tf_writer.add_summary(summ, gl_step)
                 gl_step += 1

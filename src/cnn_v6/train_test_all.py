@@ -33,9 +33,8 @@ train_valid_set, test_set = get_dataset()
 
 # setup config for session
 config = tf.ConfigProto(log_device_placement=False)
-# config.gpu_options.allow_growth = True
-# config.gpu_options.per_proces_gpu_memory_fraction = 1.
-
+config.gpu_options.allow_growth = True
+config.gpu_options.per_process_gpu_memory_fraction = 1.
 
 
 with tf.Session(config=config) as sess:

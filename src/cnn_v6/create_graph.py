@@ -206,7 +206,12 @@ if __name__ == "__main__":
 
     tf.summary.FileWriter("./graph", gl)
 
-    with tf.Session(graph = gl) as sess:
+    # setup config for session
+    config = tf.ConfigProto(log_device_placement=False)
+    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 1.
+
+    with tf.Session(graph=gl, config=config) as sess:
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver(max_to_keep=None)
         path = saver.save(sess, "./graph/cnn_lstm_model.ckpt")  
