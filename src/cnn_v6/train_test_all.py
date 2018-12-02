@@ -21,8 +21,8 @@ learning_rate = 0.0001
 
 train_mode = True if sys.argv[1] == '--train' else False
 
-# model_path = "./graph/cnn_lstm_model.ckpt"
-model_path = "./model_saver_cnn/model_1.ckpt"
+model_path = "./graph/cnn_lstm_model.ckpt"
+# model_path = "./model_saver_cnn/model_1.ckpt"
 saver = tf.train.import_meta_graph("{}.meta".format(model_path))
 
 
@@ -50,28 +50,25 @@ with tf.Session(config=config) as sess:
         Y = tf.placeholder(tf.float32, [None, params['N_CLASSES']], name='y_true') # (?, 4)
 
         # lstm output
-        #labels_series = tf.unstack(Y, axis=1)
         logits_series = g.get_tensor_by_name("LSTM_MODEL/output:0") # (16, ?, 4)
         current_state = g.get_tensor_by_name("LSTM_MODEL/current_state:0") # (2, 2, ?, 512)
-        # predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
         predictions_series = tf.map_fn(lambda x: tf.nn.softmax(x), logits_series)
 
         # lstm loss
-        
-        losses = tf.map_fn(lambda logits: tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=Y), logits_series) # (16, ?)
-        # losses = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits_series[-1], labels=Y)
+        # many-to-many
+        # losses = tf.map_fn(lambda logits: tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=Y), logits_series) # (16, ?)
+        # many-to-one
+        losses = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits_series[-1], labels=Y)
         loss_op = tf.reduce_mean(losses)
         loss_op = tf.identity(loss_op, name='lstm_loss_op')
 
         train_op = tf.train.AdagradOptimizer(learning_rate, name='lstm_Adagrad').minimize(loss_op)
-        #loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=Y, logits=y_pred))
-        #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, name='lstm_adam')
-        # train_op = optimizer.minimize(loss_op)
 
         # Evaluate model
-        #predictions_series_stack = tf.stack(predictions_series, axis=1)
-        # correct_pred = [tf.equal(tf.argmax(prediction, 1), tf.argmax(Y, 1)) for prediction in predictions_series_stack]
-        correct_pred = tf.map_fn(lambda x: tf.cast(tf.equal(tf.argmax(x, 1), tf.argmax(Y, 1)), tf.float32), predictions_series) # (16, ?)
+        # many-to-many
+        # correct_pred = tf.map_fn(lambda x: tf.cast(tf.equal(tf.argmax(x, 1), tf.argmax(Y, 1)), tf.float32), predictions_series) # (16, ?)
+        # many-to-one
+        correct_pred = tf.cast(tf.equal(tf.argmax(tf.nn.softmax(logits_series[-1]), 1), tf.argmax(Y, 1)), tf.float32)
         accuracy = tf.reduce_mean(correct_pred)
         accuracy = tf.identity(accuracy, name='lstm_accuracy')
 
@@ -101,7 +98,6 @@ with tf.Session(config=config) as sess:
     gl_step = 0
     while True:
         # count = 0
-        _current_state = np.zeros((num_layers_lstm, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden_lstm))
         if train_mode:
             # split validation set
             train_set, valid_set = split_valid_set(train_valid_set, epoch)
@@ -116,16 +112,16 @@ with tf.Session(config=config) as sess:
                     continue
                 if len(clips) == 0:
                     break
-                #print(step)
+
+                _current_state = np.zeros((num_layers_lstm, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden_lstm))
+                
                 frames, labels = get_clip(clips)
-                # print(labels)
-                #print(cnn_labels)
+
                 input_ = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
 
                 # cnn_out = sess.run(cnn_y_pred, feed_dict={cnn_X: input_, cnn_Y: cnn_y_true})
                 # lstm_input = np.reshape(cnn_out, (-1, params['N_FRAMES'], params['N_CLASSES']))
-                #print(input_[0,0,0])
-                #print("Y =>> {}".format(labels))
+
                 feed_dict = None
                 if cnn_Y == None:
                     feed_dict = {X: input_, Y: labels, isTraining: True, init_state: _current_state}
@@ -145,15 +141,9 @@ with tf.Session(config=config) as sess:
 
                 tf_writer.add_summary(summ, gl_step)
                 gl_step += 1;
-                # break
-                # count += 1
-                # if (count > 4):
-                #     break
-                # break
+
             print("""Epoch {}: lstm_loss {}; lstm_acc {}""".format(epoch, np.mean(lstm_loss_avg), np.mean(lstm_acc_avg)))
-        #         break
-        # epoch += 1
-        # continue
+
         # Testing on  dataset
         tmp_set = valid_set if train_mode else test_set
         #print("Test lstm net ...")
@@ -164,14 +154,16 @@ with tf.Session(config=config) as sess:
             if len(clips) == 0:
                 break
         
+            _current_state = np.zeros((num_layers_lstm, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden_lstm))
+
             valid_inputs, valid_labels = get_clip(clips)
             input_ = np.reshape(valid_inputs, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
           
-            acc, _predictions_series = sess.run([accuracy, predictions_series], feed_dict={X: input_, Y: valid_labels, isTraining: False, init_state: _current_state})
+            acc, _predictions_series = sess.run([accuracy, predictions_series], 
+                feed_dict={X: input_, Y: valid_labels, isTraining: False, init_state: _current_state})
+
             arr_acc_test.append(acc)
-            # print(valid_labels)
-            # print(_predictions_series)
-            # break
+
         avg_acc_test = np.mean(arr_acc_test)
         print("Acc on validation {}".format(avg_acc_test))
 

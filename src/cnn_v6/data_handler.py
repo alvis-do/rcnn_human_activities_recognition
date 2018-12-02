@@ -9,7 +9,7 @@ video_src_path = params['VIDEO_SRC_PATH']
 video_dict_path = video_src_path + '/video_dict.npy'
 
 
-video_step = 5 # Cu 5 frame thi lay 1 frame
+video_step = 1 # Cu "video_step" frame thi lay 1 frame
 
 def get_info(videos):
 	v_info = []

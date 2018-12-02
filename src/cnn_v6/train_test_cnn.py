@@ -70,7 +70,6 @@ with tf.Session(config=config) as sess:
 
 
         prediction = tf.nn.softmax(logits)
-        #prediction = tf.Print(prediction,[prediction],summarize=20)
 
         # Define loss and optimizer
         loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=Y))
@@ -85,7 +84,6 @@ with tf.Session(config=config) as sess:
         tf.summary.scalar("accuracy", accuracy)
         merged_summary_op = tf.summary.merge_all()
 
-        #saver.save(sess, "{}/graph_model_train_cnn.ckpt".format(params['CNN_MODEL_SAVER_PATH']))
 
 
     tf_writer = tf.summary.FileWriter(params['CNN_MODEL_SAVER_PATH'])
