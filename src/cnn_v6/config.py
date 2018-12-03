@@ -1,7 +1,7 @@
 params = {
-	'CUDNN_GPU' : 0,
+	'CUDNN_GPU' : 1,
 	#'DATA_PATH' : '../../dataset/my_dict.npy',
-	'VIDEO_SRC_PATH': '../../dataset/video_src',
+	'VIDEO_SRC_PATH': '/floyd/input/mydataset',
 	'CNN_MODEL_SAVER_PATH' : './model_saver_cnn',
 	'CNN_LSTM_MODEL_SAVER_PATH' : './model_saver_cnn_lstm',
 
@@ -13,7 +13,7 @@ params = {
 	'OUTPUT_HEIGHT': 6,
 	'OUTPUT_CHANNEL': 9,
 
-	'CNN_BATCH_SIZE' : 48,
+	'CNN_BATCH_SIZE' : 64,
 	'CNN_LSTM_BATCH_SIZE' : 4,
 
 	'N_FRAMES': 16,

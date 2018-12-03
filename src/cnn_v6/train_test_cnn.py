@@ -35,7 +35,7 @@ train_set, test_set = get_dataset()
 # Training Parameters
 learning_rate = 0.0001
 num_steps = 200
-display_step = 1
+display_step = 10
 
 
 
@@ -108,7 +108,8 @@ with tf.Session(config=config) as sess:
             for batch, clips in get_batch(train_set, batch_size):
                 if batch == 0:
                     continue
-                if len(clips) == 0:
+                #if len(clips) < batch_size:
+                if batch >= total_batch or len(clips)==0:
                     break
                 # lay batch tiep theo
                 #batch_input = get_batch('X_train', batch) 
@@ -132,17 +133,21 @@ with tf.Session(config=config) as sess:
                 tf_writer.add_summary(summ, gl_step)
                 gl_step += 1
                 
-                # if batch%display_step == 0:
-                #     print("Epoch {}, Batch {} Loss = {}, Training Accuracy = {}".format(epoch, batch, loss_sum / batch, acc_sum / batch))
+                if batch%display_step == 0:
+                    print("Epoch {}, Batch {} Loss = {}, Training Accuracy = {}".format(epoch, batch, loss, acc ))
             print("Epoch {}: Loss = {}, Training Accuracy = {}".format(epoch, np.mean(loss_sum), np.mean(acc_sum)))
                     
 
         #print("Testing {} frames ...".format(len(test_set) * (params['N_FRAMES'] // stride)))
+        test_len = len(test_set) * (params['N_FRAMES'] // stride)
+        batch_size = params['CNN_BATCH_SIZE'] // stride
         arr_acc_test = []
+        total_batch = math.ceil(test_len // batch_size)
         for batch_test, clips in get_batch(test_set, params['CNN_BATCH_SIZE'] // stride):
             if batch_test == 0:
                 continue
-            if len(clips) == 0:
+            #if len(clips) == 0:
+            if batch_test >= total_batch or len(clips)==0:
                 break
             frames, batch_label = get_clip(clips, stride)
             batch_label_test = np.repeat(batch_label, stride, axis=0)

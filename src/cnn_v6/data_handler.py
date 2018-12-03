@@ -6,10 +6,10 @@ from config import params
 
 
 video_src_path = params['VIDEO_SRC_PATH']
-video_dict_path = video_src_path + '/video_dict.npy'
+video_dict_path = 'video_dict.npy'
 
 
-video_step = 1 # Cu "video_step" frame thi lay 1 frame
+video_step = 2 # Cu "video_step" frame thi lay 1 frame
 
 def get_info(videos):
 	v_info = []
@@ -78,9 +78,10 @@ def get_batch(dataset, batch_size):
 			del clips, from_, to_
             
 		to_ = min((step + 1) * batch_size, len(dataset))
-		from_ = (step * batch_size) if to_ < len(dataset) else (to_ - batch_size)
+		from_ = (step * batch_size) if to_ <= len(dataset) else (to_ - batch_size)
 
 		clips = dataset[from_:to_]
+		#clips = dataset[to_ - batch_size:to_]
 		step += 1
 
 

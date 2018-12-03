@@ -21,8 +21,8 @@ learning_rate = 0.0001
 
 train_mode = True if sys.argv[1] == '--train' else False
 
-model_path = "./graph/cnn_lstm_model.ckpt"
-# model_path = "./model_saver_cnn/model_1.ckpt"
+#model_path = "./graph/cnn_lstm_model.ckpt"
+model_path = "/floyd/input/mydataset/model_saver_cnn/model_18.ckpt"
 saver = tf.train.import_meta_graph("{}.meta".format(model_path))
 
 
@@ -110,7 +110,8 @@ with tf.Session(config=config) as sess:
             for step, clips in get_batch(train_set, params['CNN_LSTM_BATCH_SIZE']):
                 if step == 0:
                     continue
-                if len(clips) == 0:
+                #if len(clips) == 0:
+                if step >= total_step or len(clips)==0:
                     break
 
                 _current_state = np.zeros((num_layers_lstm, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden_lstm))
@@ -148,10 +149,12 @@ with tf.Session(config=config) as sess:
         tmp_set = valid_set if train_mode else test_set
         #print("Test lstm net ...")
         arr_acc_test = []
+        total_step = math.ceil(len(tmp_set) // params['CNN_LSTM_BATCH_SIZE'])
         for step, clips in get_batch(tmp_set, params['CNN_LSTM_BATCH_SIZE']):
             if (step == 0):
                 continue
-            if len(clips) == 0:
+            #if len(clips) == 0:
+            if step >= total_step or len(clips)==0:
                 break
         
             _current_state = np.zeros((num_layers_lstm, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden_lstm))
@@ -172,7 +175,7 @@ with tf.Session(config=config) as sess:
 
         ####
         epoch += 1
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
         # if (avg_acc_test > acc_max):
             save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_LSTM_MODEL_SAVER_PATH'], epoch))
             print("Model saved in path: %s" % save_path)

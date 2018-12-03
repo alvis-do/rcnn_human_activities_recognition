@@ -189,7 +189,7 @@ def create_lstm_net():
             X_ = tf.identity(X_, name='input') # (?, ,16, 4)
 
             # Creates a recurrent neural network specified by RNNCell cell.
-            states_series, current_state = lstm_cpu(X_, rnn_tuple_state) if params['CUDNN_GPU'] == 0 else lstm_gpu(X_, rnn_tuple_state)
+            states_series, current_state = lstm_cpu(X_, rnn_tuple_state)
             
             out = [tf.matmul(state, weights['out']) + biases['out'] for state in states_series]
             out = tf.identity(out, name='output') # (16, ?, 4)
