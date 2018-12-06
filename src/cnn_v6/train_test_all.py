@@ -125,12 +125,13 @@ with tf.Session(config=config) as sess:
         loss_op = tf.identity(loss_op, name='lstm_loss_op')
 
         train_op = tf.train.AdamOptimizer(learning_rate, name='lstm_Adam').minimize(loss_op)
+        y_hat = tf.argmax(predictions_series[-1], 1)
 
         # Evaluate model
         # many-to-many
         # correct_pred = tf.map_fn(lambda x: tf.cast(tf.equal(tf.argmax(x, 1), tf.argmax(Y, 1)), tf.float32), predictions_series) # (16, ?)
         # many-to-one
-        correct_pred = tf.cast(tf.equal(tf.argmax(predictions_series[-1], 1), tf.argmax(Y, 1)), tf.float32)
+        correct_pred = tf.cast(tf.equal(y_hat, tf.argmax(Y, 1)), tf.float32)
         accuracy = tf.reduce_mean(correct_pred)
         accuracy = tf.identity(accuracy, name='lstm_accuracy')
 
@@ -238,6 +239,8 @@ with tf.Session(config=config) as sess:
             tmp_set = valid_set if train_mode else test_set
             #print("Test lstm net ...")
             arr_acc_test = []
+            lbs = []
+            preds = []
             total_step = math.ceil(len(tmp_set) // params['CNN_LSTM_BATCH_SIZE'])
             for step, clips in get_batch(tmp_set, params['CNN_LSTM_BATCH_SIZE']):
                 if (step == 0):
@@ -252,17 +255,24 @@ with tf.Session(config=config) as sess:
                 valid_inputs, valid_labels = get_clip(clips)
                 input_ = np.reshape(valid_inputs, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
               
-                acc, _predictions_series = sess.run([accuracy, predictions_series], 
+                acc, _y_hat = sess.run([accuracy, y_hat], 
                     feed_dict={X: input_, Y: valid_labels, isTraining: False, init_state: _current_state, init_state_1: _current_state_1})
 
                 arr_acc_test.append(acc)
+                if not train_mode:
+                    lbs.extend(valid_labels)
+                    preds.extend(_y_hat)
+
 
             avg_acc_test = np.mean(arr_acc_test)
             print("Acc on validation {}".format(avg_acc_test))
         except:
             print("Test Error: {}".format(sys.exc_info()))
 
+
         if not train_mode:
+            confuse_matrix = tf.confusion_matrix(lbs, preds).eval()
+            print(confuse_matrix)
             break
 
         ####
