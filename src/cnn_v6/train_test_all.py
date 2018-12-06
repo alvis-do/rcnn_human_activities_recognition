@@ -235,12 +235,12 @@ with tf.Session(config=config) as sess:
             print("""Epoch {}: lstm_loss {}; lstm_acc {}""".format(epoch, np.mean(lstm_loss_avg), np.mean(lstm_acc_avg)))
 
         # Testing on  dataset
+        lbs = []
+        preds = []
         try:
             tmp_set = valid_set if train_mode else test_set
             #print("Test lstm net ...")
             arr_acc_test = []
-            lbs = []
-            preds = []
             total_step = math.ceil(len(tmp_set) // params['CNN_LSTM_BATCH_SIZE'])
             for step, clips in get_batch(tmp_set, params['CNN_LSTM_BATCH_SIZE']):
                 if (step == 0):
