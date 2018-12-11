@@ -5,10 +5,9 @@ import shutil
 from config import params
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-gl = tf.Graph()
 
-def create_cnn_net():
-    with gl.as_default() as g:
+def create_cnn_net_graph(graph = tf.Graph()):
+    with graph.as_default() as g:
         with g.name_scope("CNN_MODEL"):
             # Create some wrappers for simplicity
             def conv2d(x, W, b, strides, padding_):
@@ -22,77 +21,46 @@ def create_cnn_net():
                 x = tf.nn.batch_normalization(x, mean_conv, var_conv, b, scale, 1e-100, name = "batchnorm")
                 return tf.nn.relu(x)
 
-            # def conv2d(x, W, b, strides, padding_, out_channel = 0):
-            #     use_cudnn_on_gpu = True if params['CUDNN_GPU'] == 1 else False
-            #     scale  = tf.Variable(tf.random_normal(shape = [1, 1, 1, out_channel]), dtype = tf.float32, name = "scales")
-            #     strides = (1, strides, strides, 1)
-            #     conv = tf.nn.conv2d(x, W, strides, padding=padding_,use_cudnn_on_gpu=use_cudnn_on_gpu)
-            #     mean_conv, var_conv = tf.nn.moments(conv, axes = [1,2,3], keep_dims = True)
-            #     batchnorm = tf.nn.batch_normalization(conv, mean_conv, var_conv, b, scale, 1e-100, name = "batchnorm")
-            #     nonlin = tf.nn.relu(batchnorm)
-            #     return nonlin
-
 
             def maxpool2d(x, k, strides=2):
                 # MaxPool2D wrapper
                 return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, strides, strides, 1],
                                       padding='SAME')
 
-            # Store layers weight & bias
-            # weights = {
-            #     # 5x5 conv, 1 input, 32 outputs
-            #     'wc1': tf.Variable(tf.random_uniform([7, 7, 3, 96],maxval=0.005)),
-            #     # 5x5 conv, 32 inputs, 64 outputs
-            #     'wc2': tf.Variable(tf.random_uniform([5, 5, 96, 256],maxval=0.005)),
-                
-                
-            #     'wc3': tf.Variable(tf.random_uniform([3, 3, 256, 384],maxval=0.005)),
-            #     'wc4': tf.Variable(tf.random_uniform([3, 3, 384, 384],maxval=0.005)),
-            #     'wc5': tf.Variable(tf.random_uniform([3, 3, 384, 256],maxval=0.005)),
-            #     'wc6': tf.Variable(tf.random_uniform([3, 3, 256, 512],maxval=0.005)),
-            #     'wc7': tf.Variable(tf.random_uniform([3, 3, 512, 512],maxval=0.005)),
-                
-            #     # fully connected, 7*7*64 inputs, 1024 outputs
-            #     'wd1': tf.Variable(tf.random_uniform([7*7*256, 4096],maxval=0.005)),
-            #     #'wd1': tf.Variable(tf.random_uniform([46080, 4096])),
-            #     # fully connected, 7*7*64 inputs, 1024 outputs
-            #     'wd2': tf.Variable(tf.random_uniform([4096, params['N_FEATURES']],maxval=0.005)),
-            #     # 1024 inputs, 4 outputs (class prediction)
-            #     'out': tf.Variable(tf.random_uniform([params['N_FEATURES'], params['N_CLASSES']],maxval=0.005))
-            # }
+            
             weights = {
                 # 5x5 conv, 1 input, 32 outputs
-                'wc1': tf.Variable(tf.random_normal([7, 7, 3, 96], stddev=0.1), name='wc1'),
+                'wc1': tf.Variable(tf.random_normal([7, 7, 3, 96], stddev=0.01), name='wc1'),
                 # 5x5 conv, 32 inputs, 64 outputs
-                'wc2': tf.Variable(tf.random_normal([5, 5, 96, 256], stddev=0.1), name='wc2'),
+                'wc2': tf.Variable(tf.random_normal([5, 5, 96, 256], stddev=0.01), name='wc2'),
                 
                 
-                'wc3': tf.Variable(tf.random_normal([3, 3, 256, 384], stddev=0.1), name='wc3'),
-                'wc4': tf.Variable(tf.random_normal([3, 3, 384, 384], stddev=0.1), name='wc4'),
-                'wc5': tf.Variable(tf.random_normal([3, 3, 384, 256], stddev=0.1), name='wc5'),
-                # 'wc6': tf.Variable(tf.random_normal([3, 3, 256, 512], stddev=0.1), name='wc6'),
-                # 'wc7': tf.Variable(tf.random_normal([3, 3, 512, 512], stddev=0.1), name='wc7'),
+                'wc3': tf.Variable(tf.random_normal([3, 3, 256, 384], stddev=0.01), name='wc3'),
+                'wc4': tf.Variable(tf.random_normal([3, 3, 384, 384], stddev=0.01), name='wc4'),
+                'wc5': tf.Variable(tf.random_normal([3, 3, 384, 256], stddev=0.01), name='wc5'),
+                # 'wc6': tf.Variable(tf.random_normal([3, 3, 256, 512], stddev=0.01), name='wc6'),
+                # 'wc7': tf.Variable(tf.random_normal([3, 3, 512, 512], stddev=0.01), name='wc7'),
                 
                 # fully connected, 7*7*64 inputs, 1024 outputs
-                'wd1': tf.Variable(tf.random_normal([7*7*256, 4096], stddev=0.1), name='wd1'),
+                'wd1': tf.Variable(tf.random_normal([7*7*256, 4096], stddev=0.01), name='wd1'),
                 #'wd1': tf.Variable(tf.random_normal([46080, 4096])),
                 # fully connected, 7*7*64 inputs, 1024 outputs
-                'wd2': tf.Variable(tf.random_normal([4096, params['N_FEATURES']], stddev=0.1), name='wd2'),
+                'wd2': tf.Variable(tf.random_normal([4096, params['N_FEATURES']], stddev=0.01), name='wd2'),
                 # 1024 inputs, 4 outputs (class prediction)
-                'out': tf.Variable(tf.random_normal([params['N_FEATURES'], params['N_CLASSES']], stddev=0.1), name='w_out')
+                'out': tf.Variable(tf.random_normal([params['N_FEATURES'], params['N_CLASSES']], stddev=0.01), name='w_out')
             }
 
             biases = {
-                'bc1': tf.Variable(tf.random_normal([96], stddev=0.1), name='bc1'),
-                'bc2': tf.Variable(tf.random_normal([256], stddev=0.1), name='bc2'),
-                'bc3': tf.Variable(tf.random_normal([384], stddev=0.1), name='bc3'),
-                'bc4': tf.Variable(tf.random_normal([384], stddev=0.1), name='bc4'),
-                'bc5': tf.Variable(tf.random_normal([256], stddev=0.1), name='bc5'),
-                # 'bc6': tf.Variable(tf.random_normal([512], stddev=0.1), name='bc6'),
-                # 'bc7': tf.Variable(tf.random_normal([512], stddev=0.1), name='bc7'),
-                'bd1': tf.Variable(tf.random_normal([4096], stddev=0.1), name='db2'),
-                'bd2': tf.Variable(tf.random_normal([params['N_FEATURES']], stddev=0.1), name='db2'),
-                'out': tf.Variable(tf.random_normal([params['N_CLASSES']], stddev=0.1), name='b_out')
+                'bc1': tf.Variable(tf.random_normal([96], stddev=0.01), name='bc1'),
+                'bc2': tf.Variable(tf.random_normal([256], stddev=0.01), name='bc2'),
+                'bc3': tf.Variable(tf.random_normal([384], stddev=0.01), name='bc3'),
+                'bc4': tf.Variable(tf.random_normal([384], stddev=0.01), name='bc4'),
+                'bc5': tf.Variable(tf.random_normal([256], stddev=0.01), name='bc5'),
+                # 'bc6': tf.Variable(tf.random_normal([512], stddev=0.01), name='bc6'),
+                # 'bc7': tf.Variable(tf.random_normal([512], stddev=0.01), name='bc7'),
+                'bd1': tf.Variable(tf.random_normal([4096], stddev=0.01), name='db2'),
+                'bd2': tf.Variable(tf.random_normal([params['N_FEATURES']], stddev=0.01), name='db2'),
+                'out': tf.Variable(tf.random_normal([params['N_CLASSES']], stddev=0.01), name='b_out')
             }
 
             # Convolution Layer
@@ -127,17 +95,17 @@ def create_cnn_net():
             out = tf.add(tf.matmul(fc2, weights['out']), biases['out'])
             out = tf.identity(out, name='out_class')
 
-            return out
+    return graph
     
 
 
-def create_lstm_net():
-    with gl.as_default() as g:
+def create_lstm_net_graph(graph = tf.Graph()):
+    with graph.as_default() as g:
         with g.name_scope("LSTM_MODEL"):
 
             # Create LSTM cell
-            n_hidden = 512
-            num_layers = 3
+            n_hidden = 256
+            num_layers = 2
 
 
             def lstm_cpu(X, init_state):
@@ -162,44 +130,39 @@ def create_lstm_net():
                 
             # Weight + bias
             weights = {
-                'out': tf.Variable(tf.random_normal([n_hidden, params['N_CLASSES']]), name='lstm_wo')
+                'out': tf.Variable(tf.random_normal([n_hidden, params['N_FEATURES']]), name='lstm_wo')
             }
             biases = {
-                'out': tf.Variable(tf.random_normal([params['N_CLASSES']]), name='lstm_bo')
+                'out': tf.Variable(tf.random_normal([params['N_FEATURES']]), name='lstm_bo')
             }
 
+            # Placeholder
+            init_state = tf.placeholder(tf.float32, [num_layers, 2, None, n_hidden], name='init_state')
+            init_state_zeros = tf.zeros([num_layers, 2, 1, n_hidden], name='init_state_zeros') # dimention 3th is batch size 
 
-            isTraining = tf.placeholder(tf.bool, name='is_training')
-            # cell_state = tf.placeholder(tf.float32, [params['CNN_LSTM_BATCH_SIZE'], n_hidden], name='cell_state')
-            # hidden_state = tf.placeholder(tf.float32, [params['CNN_LSTM_BATCH_SIZE'], n_hidden], name='hidden_state')
-            # init_state = tf.nn.rnn_cell.LSTMStateTuple(cell_state, hidden_state)
-            init_state = tf.placeholder(tf.float32, [num_layers, 2, params['CNN_LSTM_BATCH_SIZE'], n_hidden], name='init_state')
+            X = tf.placeholder(tf.float32, [None, None, params['N_FEATURES']], name='input')
+            
+            # Make the init state
             state_per_layer_list = tf.unstack(init_state, axis=0)
             rnn_tuple_state = tuple(
                 [tf.nn.rnn_cell.LSTMStateTuple(state_per_layer_list[idx][0], state_per_layer_list[idx][1])
                  for idx in range(num_layers)]
             )
 
-            #X = tf.placeholder(tf.float32, [None, params['N_FRAMES'], params['N_CLASSES']], name='input')
-            X = g.get_tensor_by_name("CNN_MODEL/out_class:0")
-            # X = tf.Print(X, [X[0]], summarize=4)
-            X_ = tf.reshape(X, [-1, params['N_FRAMES'], params['N_CLASSES']])
-            #X_ = tf.Print(X, [X[0]], summarize=4, message='X =>> ')
-
-            X_ = tf.identity(X_, name='input') # (?, ,16, 4)
-
             # Creates a recurrent neural network specified by RNNCell cell.
             states_series, current_state = lstm_cpu(X_, rnn_tuple_state)
             
-            out = [tf.matmul(state, weights['out']) + biases['out'] for state in states_series]
-            out = tf.identity(out, name='output') # (16, ?, 4)
+            out = tf.matmul(states_series[-1], weights['out']) + biases['out']
+            out = tf.identity(out, name='output')
 
-            curr_state = tf.identity(current_state, name='current_state') # (2, 2, ?, 512)
+            curr_state = tf.identity(current_state, name='current_state') 
+
+    return graph
 
 
 if __name__ == "__main__":
-    create_cnn_net()
-    create_lstm_net()
+    gl = create_cnn_net_graph()
+    gl = create_lstm_net_graph(gl)
 
     shutil.rmtree("./graph", ignore_errors=True)
     os.mkdir("./graph")

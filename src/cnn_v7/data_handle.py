@@ -17,7 +17,6 @@ def get_info(videos):
 		cap = cv2.VideoCapture(v)
 		l_ = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 		rp = v.replace(video_src_path,'')
-		# print(rp)
 		c_ = params['CLASSES'].index(rp.split('/', 2)[1])
 		f_from = 0
 		f_to = 0
@@ -46,7 +45,6 @@ def generate_data_dict():
 
 	with open("video_test.txt") as f:
 		test_v_info = get_info([(video_src_path + x.strip()) for x in f.readlines()])
-
 
 	# Shuffle
 	np.random.shuffle(train_v_info)
@@ -108,13 +106,16 @@ def get_clip(clips, stride=1):
 
 	return np.array(frames), np.array(labels)
 
-def split_valid_set(train_set):
+def split_valid_set(train_set, epoch):
 	length = len(train_set)
-	valid_len = int(length * 0.2)
-	pivot = length - valid_len
+	batch_size = int(length * 0.2)
+	step = epoch % ((length // batch_size) + 1)
 	
-	valid = train_set[pivot:]
-	train = train_set[:pivot]
+	to_ = min((step + 1) * batch_size, length)
+	from_ = (step * batch_size) if to_ < length else (to_ - batch_size)
+
+	valid = train_set[from_:to_]
+	train = train_set[0:from_] + train_set[to_: length]
 	
 	return  train, valid
 
