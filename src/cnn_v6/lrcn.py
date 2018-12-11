@@ -1,4 +1,9 @@
+'''
+$ python3 lrcn.py 0 /floyd/input/my_cnn_model/model_10.ckpt
+'''
 
+
+import argparse
 import numpy as np
 import tensorflow as tf
 import os, sys
@@ -26,7 +31,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 
 learning_rate = 0.0001
-display_step = 10
+display_step = 5
 epochs = 50
 epoch_save = 5
 batch_size = 16 # the number of clips
@@ -77,7 +82,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
     # add lstm graph if not existed
     if first_train:
-        g = create_lrcn_net_graph(g)
+        g = create_lstm_net_graph(g)
 
     with g.name_scope("LSTM_OP"):
 
@@ -175,9 +180,8 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                     break
 
                 # init zero state for lstm
-                current_state_zeros = g.get_tensor_by_name("LSTM_MODEL/current_state_zeros:0") 
-                _current_state = np.repeat(current_state_zeros.eval(), batch_size, axis=2)
-                print(_current_state.shape)
+                init_state_zeros = g.get_tensor_by_name("LSTM_MODEL/init_state_zeros:0") 
+                _current_state = np.repeat(init_state_zeros.eval(), batch_size, axis=2)
 
 
                 # get frames from clips - the a small equence in a video
@@ -190,7 +194,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
             
                 # Retrieve/Predict the features from the CNN net
-                _lstm_input = np.empty([1, params['N_FRAMES'], params['N_FEATURES']], dtype=float32)
+                _lstm_input = np.empty([1, params['N_FRAMES'], params['N_FEATURES']], dtype=np.float32)
                 _cnn_feed_dict = {cnn_X: _cnn_inputs, cnn_Y: _cnn_labels, X: _lstm_input, Y: labels, init_state: _current_state}
                 _cnn_loss, _cnn_acc, _cnn_features = sess.run([cnn_loss_op, cnn_acc, cnn_features], feed_dict=_cnn_feed_dict)
 
@@ -240,8 +244,8 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
 
             # init zero state for lstm
-            current_state_zeros = g.get_tensor_by_name("LSTM_MODEL/current_state_zeros:0") 
-            _current_state = np.repeat(current_state_zeros.eval(), batch_size, axis=2)
+            init_state_zeros = g.get_tensor_by_name("LSTM_MODEL/init_state_zeros:0")
+            _current_state = np.repeat(init_state_zeros.eval(), batch_size, axis=2)
 
 
             # get frames from clips - the a small equence in a video
@@ -254,7 +258,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
 
             # Retrieve/Predict the features from the CNN net
-            _lstm_input = np.empty([1, params['N_FRAMES'], params['N_FEATURES']], dtype=float32)
+            _lstm_input = np.empty([1, params['N_FRAMES'], params['N_FEATURES']], dtype=np.float32)
             _cnn_feed_dict = {cnn_X: _cnn_inputs, cnn_Y: _cnn_labels, X: _lstm_input, Y: labels, init_state: _current_state}
             _cnn_loss, _cnn_acc, _cnn_features = sess.run([cnn_loss_op, cnn_acc, cnn_features], feed_dict=_cnn_feed_dict)
 
@@ -286,6 +290,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
         else:
             return test_loss, test_acc
 
+    # End function
 
 
 
@@ -302,7 +307,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
             # Save model
             if (epoch + 1) % epoch_save == 0:
-                save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_LSTM_MODEL_SAVER_PATH'], epoch + 1))
+                save_path = saver.save(sess, "{}/model{}_{}.ckpt".format(params['CNN_LSTM_MODEL_SAVER_PATH'], "_resume" if not first_train else "", epoch + 1))
                 print("Model saved in path: %s" % save_path)
 
     else:

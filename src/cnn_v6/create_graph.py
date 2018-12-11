@@ -120,27 +120,22 @@ def create_lstm_net_graph(graph = tf.Graph()):
 
                     return output, state
 
-            def lstm_gpu(X, init_state):
-                with g.name_scope("lstm_gpu"):
-                    lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=num_layers,
-                                                        num_units=n_hidden,
-                                                        kernel_initializer=tf.initializers.random_uniform(-0.01, 0.01))
-                    lstm.build(X.get_shape())
-                    return lstm(X, initial_state=init_state)
                 
             # Weight + bias
             weights = {
-                'out': tf.Variable(tf.random_normal([n_hidden, params['N_FEATURES']]), name='lstm_wo')
+                'out': tf.Variable(tf.random_normal([n_hidden, params['N_CLASSES']]), name='lstm_wo')
             }
             biases = {
-                'out': tf.Variable(tf.random_normal([params['N_FEATURES']]), name='lstm_bo')
+                'out': tf.Variable(tf.random_normal([params['N_CLASSES']]), name='lstm_bo')
             }
 
             # Placeholder
             init_state = tf.placeholder(tf.float32, [num_layers, 2, None, n_hidden], name='init_state')
-            init_state_zeros = tf.zeros([num_layers, 2, 1, n_hidden], name='init_state_zeros') # dimention 3th is batch size 
+            # None is batch_size
+            init_state_zeros = tf.zeros([num_layers, 2, 1, n_hidden], name='init_state_zeros')
+            # 2 for c (hidden state) and h (output)
 
-            X = tf.placeholder(tf.float32, [None, None, params['N_FEATURES']], name='input')
+            X = tf.placeholder(tf.float32, [None, params['N_FRAMES'], params['N_FEATURES']], name='input')
             
             # Make the init state
             state_per_layer_list = tf.unstack(init_state, axis=0)
@@ -150,7 +145,7 @@ def create_lstm_net_graph(graph = tf.Graph()):
             )
 
             # Creates a recurrent neural network specified by RNNCell cell.
-            states_series, current_state = lstm_cpu(X_, rnn_tuple_state)
+            states_series, current_state = lstm_cpu(X, rnn_tuple_state)
             
             out = tf.matmul(states_series[-1], weights['out']) + biases['out']
             out = tf.identity(out, name='output')

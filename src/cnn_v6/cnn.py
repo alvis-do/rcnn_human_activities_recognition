@@ -1,3 +1,6 @@
+'''
+$ python3 cnn.py 0
+'''
 
 import argparse
 import numpy as np
@@ -123,10 +126,10 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
     if saver:
         saver.restore(sess, args.modelpath[0])
     else:
-        saver = tf.train.Saver(max_to_keep=None)
+        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
 
-    saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'], 1))
     
+
     def run(epoch = 0):
         loss = 0
         acc = 0
@@ -175,6 +178,7 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
                     tmp_loss = 0
                     tmp_acc = 0
                 
+
             # compute the average of loss and acc
             loss /= batch
             acc /= batch
@@ -209,6 +213,7 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
                 # summary data to tensor board
                 tf_writer.add_summary(_summ, epoch * total_batch + batch)
             
+
         # compute the average of loss and acc
         test_loss /= batch
         test_acc /= batch
@@ -234,7 +239,7 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
 
             # Save model
             if (epoch + 1) % epoch_save == 0:
-                save_path = saver.save(sess, "{}/model_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'], epoch + 1))
+                save_path = saver.save(sess, "{}/model{}_{}.ckpt".format(params['CNN_MODEL_SAVER_PATH'], "_resume" if not first_train else "", epoch + 1))
                 print("Model saved in path: %s" % save_path)
 
     else:
