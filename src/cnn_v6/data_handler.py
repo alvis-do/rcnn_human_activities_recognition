@@ -1,15 +1,16 @@
 import numpy as np
 import os
 import cv2
-import glob
 from config import params
 
 
 video_src_path = params['VIDEO_SRC_PATH']
 video_dict_path = 'video_dict.npy'
+video_train_path = 'video_train.txt'
+video_test_path = 'video_test.txt'
 
 
-video_step = 2 # Cu "video_step" frame thi lay 1 frame
+video_step = 5 # Cu "video_step" frame thi lay 1 frame
 
 def get_info(videos):
 	v_info = []
@@ -17,7 +18,6 @@ def get_info(videos):
 		cap = cv2.VideoCapture(v)
 		l_ = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 		rp = v.replace(video_src_path,'')
-		# print(rp)
 		c_ = params['CLASSES'].index(rp.split('/', 2)[1])
 		f_from = 0
 		f_to = 0
@@ -41,10 +41,10 @@ def get_info(videos):
 	return v_info
 
 def generate_data_dict():
-	with open("video_train.txt") as f:
+	with open(video_train_path) as f:
 		train_v_info = get_info([(video_src_path + x.strip()) for x in f.readlines()])
 
-	with open("video_test.txt") as f:
+	with open(video_test_path) as f:
 		test_v_info = get_info([(video_src_path + x.strip()) for x in f.readlines()])
 
 
@@ -118,5 +118,79 @@ def split_valid_set(train_set):
 	
 	return  train, valid
 
+
+def get_frames_from_video(video_path, stride=2):
+	frame_idx = 0
+	cap = cv2.VideoCapture(video_src_path + video_path.strip())
+	count_frame = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+	# print(video_src_path + video_path.strip())
+	while 1:
+		if frame_idx == 0:
+			yield None
+		else:
+			yield frames
+		frames = []
+		i = frame_idx + 2
+		j = 0
+		_stride = stride
+		while 1:
+			if j == params['N_FRAMES']: 
+				frame_idx = i - 1
+				break
+			if i%_stride == 0:
+				# print("i: {}".format(i))
+				if i >= count_frame:
+					# print("stride: {}".format(_stride))
+					_stride -= 1
+					if _stride <= 0:
+						break
+					frames = []
+					i = frame_idx
+					j = 0
+					continue
+				cap.set(cv2.CAP_PROP_POS_FRAMES, i)
+				_, frame = cap.read()
+				frame = cv2.resize(frame, (params['INPUT_WIDTH'], params['INPUT_HEIGHT']), interpolation = cv2.INTER_CUBIC)
+				frames.append(frame)
+				j += 1
+			i += 1
+		# print("lenframe: {}".format(len(frames)))
+		if len(frames) < params['N_FRAMES'] and len(frames) > 8:
+			frames.extend(np.zeros((params['N_FRAMES'] - len(frames), params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']), dtype=np.float32))
+			break
+		elif len(frames) == params['N_FRAMES']:
+			pass
+		else:
+			frames = []
+			break
+
+
+def get_video_test():
+	def tmp_func(r_path):
+		p = video_src_path + r_path.strip()
+		rp = p.replace(video_src_path,'')
+		c = params['CLASSES'].index(rp.split('/', 2)[1])
+		label = [0]*params['N_CLASSES']
+		label[c] = 1
+		return r_path, label
+
+	with open(video_test_path) as f:
+		records = [tmp_func(x) for x in f.readlines()]
+
+	return records
+
+
 if __name__ == "__main__":
 	generate_data_dict()
+
+
+	# test function
+	
+	# for frames in get_frames_from_video("/golf_swing/v_golf_08/v_golf_08_01.mpg"):
+	# 	if frames == None:
+	# 		print("continue")
+	# 		continue
+	# 	if len(frames) <= 0:
+	# 		break
+	# 	print("-----------")
+	# print("done")

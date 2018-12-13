@@ -5,9 +5,9 @@ $ python3 cnn.py 0
 import argparse
 import numpy as np
 import tensorflow as tf
-import os, sys
+import os
 from config import params
-from create_graph import create_cnn_net_graph, create_lstm_net_graph
+from create_graph import create_cnn_net_graph
 from data_handler import get_dataset, get_batch, get_clip, split_valid_set
 
 
@@ -117,7 +117,7 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
         
 
 
-    tf_writer = tf.summary.FileWriter(params['CNN_MODEL_SAVER_PATH'])
+    tf_writer = tf.summary.FileWriter(params['CNN_MODEL_SAVER_PATH'], g)
 
     # init global vars
     sess.run(tf.global_variables_initializer())
@@ -125,11 +125,10 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
     # override the available global variables in the cnn model if existed
     if saver:
         saver.restore(sess, args.modelpath[0])
-    else:
-        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
+
+    saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=None)
 
     
-
     def run(epoch = 0):
         loss = 0
         acc = 0
