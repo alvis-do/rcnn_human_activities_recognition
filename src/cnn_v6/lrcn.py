@@ -7,6 +7,7 @@ import argparse
 import numpy as np
 import tensorflow as tf
 import os
+import time
 from config import params
 from create_graph import create_lstm_net_graph
 from data_handler import get_dataset, get_batch, get_clip, split_valid_set, get_video_test, get_frames_from_video
@@ -268,6 +269,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
             video_records = get_video_test()
             for path, label in video_records:
                 _vote_label = [0]*params['N_CLASSES']
+                _t = time.process_time()
                 for frames in get_frames_from_video(path):
                     if frames == None:
                         continue
@@ -275,8 +277,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                         break
                         
                     _current_state = init_state_lstm(1)
-                    _cnn_features, _cnn_pred = extract_feature([frames], [label], _current_state, [cnn_features, cnn_pred])
-                    _pred_label = _cnn_pred[0]
+                    _cnn_features = extract_feature([frames], [label], _current_state, cnn_features)
                     _pred_label = run_session([frames], [label], [_cnn_features], _current_state, prediction)
                     _idx_label = np.argmax(_pred_label[0])
 
@@ -286,9 +287,10 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                 if frames == None or len(frames) == 0:
                     continue
 
+                elapsed_time = time.process_time() - _t
                 # sess.run([acc_update_op, prec_update_op, recall_update_op], feed_dict={metric_label: label, metric_pred: _vote_label})
 
-                print("{} --- {}".format(path.strip(), params['CLASSES'][np.argmax(_vote_label)]))
+                print("{} --- {} --- {}(s)".format(path.strip(), params['CLASSES'][np.argmax(_vote_label)], elapsed_time))
                 lbs.append(np.argmax(label))
                 preds.append(np.argmax(_vote_label))
 
