@@ -108,16 +108,14 @@ def create_lstm_net_graph(graph = tf.Graph()):
             num_layers = 2
 
 
-            def lstm_cpu(X, init_state):
+            def lstm_net(X, init_state):
+                n_hidden = 256
+                num_layers = 2
                 with g.name_scope("lstm_cpu"):
                     X_seq = tf.unstack(X, axis=1)
-
                     cells = [tf.contrib.rnn.LSTMBlockCell(n_hidden, forget_bias=1.0) for i in range(num_layers)]
                     multi_cell = tf.contrib.rnn.MultiRNNCell(cells)
                     output, state = tf.contrib.rnn.static_rnn(multi_cell, X_seq, initial_state=init_state, dtype=tf.float32)
-                    #output = tf.stack(output, axis=1)
-                    #print(state)
-
                     return output, state
 
                 
@@ -145,7 +143,7 @@ def create_lstm_net_graph(graph = tf.Graph()):
             )
 
             # Creates a recurrent neural network specified by RNNCell cell.
-            states_series, current_state = lstm_cpu(X, rnn_tuple_state)
+            states_series, current_state = lstm_net(X, rnn_tuple_state)
             
             out = tf.matmul(states_series[-1], weights['out']) + biases['out']
             out = tf.identity(out, name='output')

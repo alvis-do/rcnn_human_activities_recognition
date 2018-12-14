@@ -208,7 +208,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                     break
 
                 frames, labels = get_clip(clips)
-                _current_state = init_state_lstm(batch_size)
+                _current_state = init_state_lstm(len(clips))
                 _cnn_loss, _cnn_acc, _cnn_features = extract_feature(frames, labels, _current_state, [cnn_loss_op, cnn_acc, cnn_features])
                 _loss, _acc, _current_state, _summ, _ = run_session(frames, labels, _cnn_features, _current_state, [loss_op, accuracy, current_state, summary_train, train_op])
 
@@ -246,7 +246,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                     break
 
                 frames, labels = get_clip(clips)
-                _current_state = init_state_lstm(batch_size)
+                _current_state = init_state_lstm(len(clips))
                 _cnn_features = extract_feature(frames, labels, _current_state, cnn_features)
                 _loss, _acc, _summ = run_session(frames, labels, _cnn_features, _current_state, [loss_op, accuracy, summary_val])
 
