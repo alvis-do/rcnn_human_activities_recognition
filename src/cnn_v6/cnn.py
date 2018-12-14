@@ -30,11 +30,11 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 # Training Parameters
 learning_rate = 0.0001
-display_step = 10
-epochs = 50
-epoch_save = 5
+display_step = 1
+epochs = 10
+epoch_save = 2
 batch_size = 16 # the number of clips
-clip_stride = 4 # get a frame for each clip_stride frames
+clip_stride = 2 # get a frame for each clip_stride frames
 
 
 
@@ -136,6 +136,19 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
         test_acc = 0
         eval_set = test_set
 
+        def reshape_input(frames, labels):
+            # reshape inputs and labels
+            _input = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
+            _label = np.repeat(labels, params['N_FRAMES'] // clip_stride, axis=0)
+            return _input, _label
+
+        def run_session(frames, labels, fetches):
+            _input, _label = reshape_input(frames, labels)
+            # feed placeholder and train model
+            _feed_dict={X: _input, Y: _label}
+            return sess.run(fetches, feed_dict=_feed_dict)
+
+
         if args.mode[0] == 0: # train mode
 
             eval_set = valid_set
@@ -147,20 +160,13 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
             for batch, clips in get_batch(train_set, batch_size):
                 if batch == 0:
                     continue
-                if batch >= total_batch or len(clips)==0:
+                if batch > total_batch or len(clips)==0:
                     break
 
-
                 # get frames from clips - the a small equence in a video
-                frames, label = get_clip(clips, clip_stride)
+                frames, labels = get_clip(clips, clip_stride)
+                _loss, _acc, _summ, _ = run_session(frames, labels, [loss_op, accuracy, summary_train, train_op])
 
-                # reshape inputs and labels
-                _input = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
-                _label = np.repeat(label, clip_stride, axis=0)
-
-                # feed placeholder and train model
-                _feed_dict={X: _input, Y: _label}
-                _loss, _acc, _summ, _ = sess.run([loss_op, accuracy, summary_train, train_op], feed_dict=_feed_dict)
 
                 # Sum loss and acc
                 tmp_loss += _loss
@@ -190,19 +196,12 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
         for batch, clips in get_batch(eval_set, batch_size):
             if batch == 0:
                 continue
-            if batch >= total_batch or len(clips)==0:
+            if batch > total_batch or len(clips)==0:
                 break
 
             # get frames from clips - the a small equence in a video
-            frames, label = get_clip(clips, clip_stride)
-
-            # reshape inputs and labels
-            _input = np.reshape(frames, (-1, params['INPUT_WIDTH'], params['INPUT_HEIGHT'], params['INPUT_CHANNEL']))
-            _label = np.repeat(label, clip_stride, axis=0)
-
-            # feed placeholder and train model
-            _feed_dict={X: _input, Y: _label}
-            _loss, _acc, _summ = sess.run([loss_op, accuracy, summary_val], feed_dict=_feed_dict)
+            frames, labels = get_clip(clips, clip_stride)
+            _loss, _acc, _summ = run_session(frames, labels, [loss_op, accuracy, summary_val])
 
             # Sum loss and acc
             test_loss += _loss

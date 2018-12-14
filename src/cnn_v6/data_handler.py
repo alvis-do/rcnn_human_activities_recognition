@@ -6,11 +6,10 @@ from config import params
 
 video_src_path = params['VIDEO_SRC_PATH']
 video_dict_path = 'video_dict.npy'
-video_train_path = 'video_train.txt'
-video_test_path = 'video_test.txt'
+video_train_path = 'video_train_random.txt'
+video_test_path = 'video_test_random.txt'
+video_step = 2 # Cu "video_step" frame thi lay 1 frame
 
-
-video_step = 5 # Cu "video_step" frame thi lay 1 frame
 
 def get_info(videos):
 	v_info = []

@@ -34,7 +34,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 learning_rate = 0.0001
 display_step = 5
 epochs = 10
-epoch_save = 1
+epoch_save = 2
 batch_size = 16 # the number of clips
 
 
@@ -204,7 +204,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
             for batch, clips in get_batch(train_set, batch_size):
                 if batch == 0:
                     continue
-                if batch >= total_batch or len(clips)==0:
+                if batch > total_batch or len(clips)==0:
                     break
 
                 frames, labels = get_clip(clips)
@@ -242,7 +242,7 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
             for batch, clips in get_batch(valid_set, batch_size):
                 if batch == 0:
                     continue
-                if batch >= total_batch or len(clips)==0:
+                if batch > total_batch or len(clips)==0:
                     break
 
                 frames, labels = get_clip(clips)

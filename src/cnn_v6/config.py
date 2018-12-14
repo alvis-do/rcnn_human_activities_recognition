@@ -1,7 +1,7 @@
 params = {
-	'CUDNN_GPU' : 0,
+	'CUDNN_GPU' : 1,
 	#'DATA_PATH' : '../../dataset/my_dict.npy',
-	'VIDEO_SRC_PATH': '/floyd/input/mydataset',
+	'VIDEO_SRC_PATH': '/floyd/input/ucf4',
 	'CNN_MODEL_SAVER_PATH' : './model_saver_cnn',
 	'CNN_LSTM_MODEL_SAVER_PATH' : './model_saver_cnn_lstm',
 
