@@ -38,15 +38,15 @@ epoch_save = 2
 batch_size = 16 # the number of clips
 
 
-
- # Get data set
+# Get data set
 train_set, test_set = get_dataset()
-train_set, valid_set = split_valid_set(train_set)
-
-train_len = len(train_set)
 test_len = len(test_set)
-valid_len = len(valid_set)
-
+valid_set = []
+valid_len = 0
+if params['USE_VALIDATION_DATASET']:
+    train_set, valid_set = split_valid_set(train_set)
+    valid_len = len(valid_set)
+train_len = len(train_set)
 
 
 # setup config for session
@@ -238,28 +238,29 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
 
             # Valid model
-            total_batch = (valid_len // batch_size) + 1
-            for batch, clips in get_batch(valid_set, batch_size):
-                if batch == 0:
-                    continue
-                if batch > total_batch or len(clips)==0:
-                    break
+            if params['USE_VALIDATION_DATASET']:
+                total_batch = (valid_len // batch_size) + 1
+                for batch, clips in get_batch(valid_set, batch_size):
+                    if batch == 0:
+                        continue
+                    if batch > total_batch or len(clips)==0:
+                        break
 
-                frames, labels = get_clip(clips)
-                _current_state = init_state_lstm(len(clips))
-                _cnn_features = extract_feature(frames, labels, _current_state, cnn_features)
-                _loss, _acc, _summ = run_session(frames, labels, _cnn_features, _current_state, [loss_op, accuracy, summary_val])
+                    frames, labels = get_clip(clips)
+                    _current_state = init_state_lstm(len(clips))
+                    _cnn_features = extract_feature(frames, labels, _current_state, cnn_features)
+                    _loss, _acc, _summ = run_session(frames, labels, _cnn_features, _current_state, [loss_op, accuracy, summary_val])
 
-                # Sum loss and acc
-                test_loss += _loss
-                test_acc += _acc
+                    # Sum loss and acc
+                    test_loss += _loss
+                    test_acc += _acc
 
-                tf_writer.add_summary(_summ, epoch * total_batch + batch)
-                   
+                    tf_writer.add_summary(_summ, epoch * total_batch + batch)
+                       
 
-            # compute the average of loss and acc
-            test_loss /= batch
-            test_acc /= batch
+                # compute the average of loss and acc
+                test_loss /= batch
+                test_acc /= batch
 
             return loss, acc, test_loss, test_acc
 

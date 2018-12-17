@@ -30,7 +30,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 # Training Parameters
 learning_rate = 0.0001
-display_step = 1
+display_step = 5
 epochs = 10
 epoch_save = 2
 batch_size = 16 # the number of clips
@@ -40,11 +40,13 @@ clip_stride = 2 # get a frame for each clip_stride frames
 
  # Get data set
 train_set, test_set = get_dataset()
-train_set, valid_set = split_valid_set(train_set)
-
-train_len = len(train_set)
 test_len = len(test_set)
-valid_len = len(valid_set)
+valid_set = []
+valid_len = 0
+if params['USE_VALIDATION_DATASET']:
+    train_set, valid_set = split_valid_set(train_set)
+    valid_len = len(valid_set)
+train_len = len(train_set)
 
 
 # setup config for session
@@ -191,30 +193,31 @@ with tf.Session(graph=cnn_graph, config=config) as sess:
 
 
         # Valid or test model
-        eval_len = len(eval_set)
-        total_batch = (eval_len // batch_size) + 1
-        for batch, clips in get_batch(eval_set, batch_size):
-            if batch == 0:
-                continue
-            if batch > total_batch or len(clips)==0:
-                break
+        if params['USE_VALIDATION_DATASET'] or args.mode[0] == 1:
+            eval_len = len(eval_set)
+            total_batch = (eval_len // batch_size) + 1
+            for batch, clips in get_batch(eval_set, batch_size):
+                if batch == 0:
+                    continue
+                if batch > total_batch or len(clips)==0:
+                    break
 
-            # get frames from clips - the a small equence in a video
-            frames, labels = get_clip(clips, clip_stride)
-            _loss, _acc, _summ = run_session(frames, labels, [loss_op, accuracy, summary_val])
+                # get frames from clips - the a small equence in a video
+                frames, labels = get_clip(clips, clip_stride)
+                _loss, _acc, _summ = run_session(frames, labels, [loss_op, accuracy, summary_val])
 
-            # Sum loss and acc
-            test_loss += _loss
-            test_acc += _acc
-            
-            if args.mode[0] == 0: # train mode
-                # summary data to tensor board
-                tf_writer.add_summary(_summ, epoch * total_batch + batch)
-            
+                # Sum loss and acc
+                test_loss += _loss
+                test_acc += _acc
+                
+                if args.mode[0] == 0: # train mode
+                    # summary data to tensor board
+                    tf_writer.add_summary(_summ, epoch * total_batch + batch)
+                
 
-        # compute the average of loss and acc
-        test_loss /= batch
-        test_acc /= batch
+            # compute the average of loss and acc
+            test_loss /= batch
+            test_acc /= batch
 
         # return
         if args.mode[0] == 0: # train mode 

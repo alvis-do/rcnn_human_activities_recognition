@@ -6,9 +6,11 @@ from config import params
 
 video_src_path = params['VIDEO_SRC_PATH']
 video_dict_path = 'video_dict.npy'
-video_train_path = 'video_train_random.txt'
-video_test_path = 'video_test_random.txt'
-video_step = 2 # Cu "video_step" frame thi lay 1 frame
+video_train_path = 'sequences_KTH_train_result.txt'
+# video_train_path = 'video_train_random.txt'
+video_test_path = 'sequences_KTH_test_result.txt'
+# video_test_path = 'video_test_random.txt'
+video_step = 5 # Cu "video_step" frame thi lay 1 frame
 
 
 def get_info(videos):
@@ -98,7 +100,7 @@ def get_clip(clips, stride=1):
 			if (i % stride == 0): 
 				cap.set(cv2.CAP_PROP_POS_FRAMES, v)
 				_, frame = cap.read()
-				frame = cv2.resize(frame, (params['INPUT_WIDTH'], params['INPUT_HEIGHT']), interpolation = cv2.INTER_CUBIC)
+				frame = cv2.resize(frame, (params['INPUT_WIDTH'], params['INPUT_HEIGHT']))
 				clip_frames.append(frame)
 		
 
