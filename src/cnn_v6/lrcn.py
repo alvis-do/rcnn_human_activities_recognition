@@ -268,6 +268,8 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
             lbs = []
             preds = []
             video_records = get_video_test()
+            y_true = []
+            y_score = []
             for path, label in video_records:
                 _vote_label = [0]*params['N_CLASSES']
                 _t = time.process_time()
@@ -295,8 +297,15 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                 lbs.append(np.argmax(label))
                 preds.append(np.argmax(_vote_label))
 
+                y_true.append(label)
+                y_score.append(_vote_label)
+
             # compute confuse matrix
             _confuse_matrix = tf.confusion_matrix(lbs, preds).eval()
+
+            # save all y_score
+            y_dict = {'y_true': y_true, 'y_score': y_score}
+            np.save('y_pred.npy', y_dict)
             
             # compute accuracy, precision, recall
             with tf.Session() as metric_sess:
