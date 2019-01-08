@@ -5,7 +5,7 @@
   <!-- Mobile Specific Meta -->
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
   <!-- Favicon -->
-  <link rel="shortcut icon" href="img/fav.png" />
+  <!-- <link rel="shortcut icon" href="img/fav.png" /> -->
   <!-- Author Meta -->
   <meta name="author" content="colorlib" />
   <!-- Meta Description -->
@@ -17,7 +17,7 @@
   <!-- Site Title -->
   <title>Eclipse Education</title>
 
-  <link href="https://fonts.googleapis.com/css?family=Playfair+Display:900|Roboto:400,400i,500,700" rel="stylesheet" />
+  <!-- <link href="https://fonts.googleapis.com/css?family=Playfair+Display:900|Roboto:400,400i,500,700" rel="stylesheet" /> -->
   <!--
       CSS
       =============================================
@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="css/owl.carousel.css" />
   <link rel="stylesheet" href="css/nice-select.css">
   <link rel="stylesheet" href="css/hexagons.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/themify-icons/0.1.2/css/themify-icons.css" />
+  <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/themify-icons/0.1.2/css/themify-icons.css" /> -->
   <link rel="stylesheet" href="css/main.css" />
   <link rel="stylesheet" href="css/custom.css" />
 </head>
@@ -40,12 +40,12 @@
     <nav class="navbar navbar-expand-lg  navbar-light">
       <div class="container">
         <a class="navbar-brand" href="index.html">
-          <img src="img/logo.png" alt="" />
+          <img src="img/logo.png" alt="" width="70px" height="auto">
         </a>
-       
+
       </div>
     </nav>
-   
+
   </header>
   <!-- ================ End Header Area ================= -->
 
@@ -69,7 +69,7 @@
           </p>
         </div>
         <div class="offset-lg-2 col-lg-3 col-md-12 home-banner-right">
-          <img class="img-fluid" src="img/header-img.png" alt="" />
+          <!-- <img class="img-fluid" src="img/header-img.png" alt="" /> -->
         </div>
       </div>
     </div>
@@ -106,9 +106,9 @@
             <div class="ml-20">
               <h4>Demo</h4>
               <p>
-                <li><a href="#">GT1: Clouds of Space-Time Interest Points</a></li>
+                <li><a id="gt-clouds" href="#">GT1: Clouds of Space-Time Interest Points</a></li>
                 ---
-                <li><a href="#">GT2: Long-term Recurrent Convolutional Networks</a></li>
+                <li><a id="gt-lrcn" href="#">GT2: Long-term Recurrent Convolutional Networks</a></li>
                 ---
                 <li></li>
               </p>
@@ -142,7 +142,7 @@
     <div class="container">
       <div class="row justify-content-center section-title">
         <div class="col-lg-12">
-          <h2>
+          <h2 id="demo-area">
             DEMO
           </h2>
           <p>
@@ -158,7 +158,7 @@
               <div class="container">
                 <div class="row">
                   <select class="form-control" id="gt-select">
-                    <option>GT1: Clouds of Space-Time Interest Points</option>
+                    <!-- <option>GT1: Clouds of Space-Time Interest Points</option> -->
                     <option>GT2: Long-term Recurrent Convolutional Networks</option>
                   </select>
                 </div>
@@ -167,11 +167,14 @@
                     <p class="lead">Thêm video vào đây</p>
                     <p class="lead">
                       <div class="input-file" name="Fichier1">
-                        <button class="btn btn-primary btn-choose-gt1" type="button">Tải lên</button>
+                      <span class="btn btn-primary btn-file">
+                        Browse <input id="in-video" type="file">
+                      </span>
                       </div>
                       <!-- <button type="button" class="btn btn-primary align-middle">Tải lên từ máy tính của bạn</button> -->
                     </p>
                   </div>
+                  <embed id="in-video-src" width="425" height="344">
                 </div>
               </div>
             </form>

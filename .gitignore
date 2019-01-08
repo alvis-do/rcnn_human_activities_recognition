@@ -2,6 +2,8 @@ dataset/
 src/.ipynb_checkpoints
 checkpoint/
 model_saver/
+model_saver_lrcn/
+model_saver_lrcn_KTH/
 src/cnn_v5/__pycache__
 src/cnn_v5/graph
 src/cnn_v5/train_graph
