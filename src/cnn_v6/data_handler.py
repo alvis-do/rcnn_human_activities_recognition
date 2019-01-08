@@ -6,10 +6,13 @@ from config import params
 
 video_src_path = params['VIDEO_SRC_PATH']
 video_dict_path = 'video_dict.npy'
+
 # video_train_path = 'sequences_KTH_train_result.txt'
 # video_test_path = 'sequences_KTH_test_result.txt'
-video_train_path = 'video_train_random.txt'
-video_test_path = 'video_test_random.txt'
+
+video_train_path = 'video_train_default.txt'
+video_test_path = 'video_test_custom.txt'
+
 video_step = 2 # Cu "video_step" frame thi lay 1 frame
 
 

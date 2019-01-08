@@ -1,7 +1,3 @@
-'''
-$ python3 lrcn.py 0 /floyd/input/my_cnn_model/model_10.ckpt
-'''
-
 
 import argparse
 import numpy as np
@@ -271,9 +267,10 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
             y_true = []
             y_score = []
             for path, label in video_records:
+                print("\nvideo: {}".format(path.strip()))
                 _vote_label = [0]*params['N_CLASSES']
-                _t = time.process_time()
-                for frames in get_frames_from_video(path):
+                _t = time.time()
+                for i, frames in enumerate(get_frames_from_video(path)):
                     if frames == None:
                         continue
                     if len(frames) == 0:
@@ -287,13 +284,15 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
                     # vote with own weight
                     _vote_label[_idx_label] += _pred_label[0][_idx_label]
 
+                    print("clip {}: {}".format(i, _pred_label))
+
                 if frames == None or len(frames) == 0:
                     continue
 
-                elapsed_time = time.process_time() - _t
+                elapsed_time = time.time() - _t
                 # sess.run([acc_update_op, prec_update_op, recall_update_op], feed_dict={metric_label: label, metric_pred: _vote_label})
 
-                print("{} --- {} --- {}(s)".format(path.strip(), params['CLASSES'][np.argmax(_vote_label)], elapsed_time))
+                print("Result: \n--- score: {} \n--- y_true: {} \n--- y_pred: {} \n--- time: {}(s)".format(_vote_label, params['CLASSES'][np.argmax(label)], params['CLASSES'][np.argmax(_vote_label)], elapsed_time))
                 lbs.append(np.argmax(label))
                 preds.append(np.argmax(_vote_label))
 
@@ -346,11 +345,11 @@ with tf.Session(graph=lrcn_graph, config=config) as sess:
 
         _confuse_matrix, _accuracy, _precision, _recall = run()
 
-        print("------ CONFUSE MATRIX ------\n{}".format(_confuse_matrix))
-        print("""\nThe final result:
-            | accuracy {}
-            | precision {}
-            | recall {} \n""".format(_accuracy, _precision, _recall))
+        # print("------ CONFUSE MATRIX ------\n{}".format(_confuse_matrix))
+        # print("""\nThe final result:
+        #     | accuracy {}
+        #     | precision {}
+        #     | recall {} \n""".format(_accuracy, _precision, _recall))
 
 
 # End session =======================================================================================
