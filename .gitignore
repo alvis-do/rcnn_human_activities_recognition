@@ -11,3 +11,4 @@ src/cnn_v6/__pycache__
 src/cnn_v6/graph
 src/cnn_v6/model_saver_cnn
 src/cnn_v6/model_saver_cnn_lstm
+/src/lrcn/model_saver_cnn_lstm
