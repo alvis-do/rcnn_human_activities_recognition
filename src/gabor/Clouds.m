@@ -7,7 +7,7 @@ gabor_0 = gabor2_fn(sigma,0,lambda,psi,gamma);
 gabor_22 = gabor2_fn(sigma,22,lambda,psi,gamma);
 gabor_45 = gabor2_fn(sigma,45,lambda,psi,gamma);
 gabor_67 = gabor2_fn(sigma,67,lambda,psi,gamma);
-gabor_90 = gabor2_fn(sigma,90,lambda,psi,gamma);
+gabor_90 = gabor2_fn(sigma,90,lambda,psi,gamma);    
 %     vid = '/Users/thoithanh/Desktop/DataSet/running_mp4/person01_running_d1_uncomp.mp4';
 %     feature = vid2feature_fn(vid);
 
@@ -23,15 +23,18 @@ gabor_90 = gabor2_fn(sigma,90,lambda,psi,gamma);
              else
                  strp = int2str(p);
              end
-             video = strcat('/Users/thoithanh/Desktop/Database_mp4/',k,'/person',strp,'_',k,'_d',int2str(d),'_uncomp.mp4');
-             temp_feature = vid2feature_fn(video);
-             feature = [feature; temp_feature];
-             disp([{k} p d ]);
+             try
+                 video = strcat('./video/',k,'/person',strp,'_',k,'_d',int2str(d),'_uncomp.mp4');
+                 temp_feature = vid2feature_fn(video);
+                 feature = [feature; temp_feature];
+                 disp([{k} p d ]);
+             catch
+             end
              %filename = strcat('/Users/thoithanh/Desktop/New_features/',k,'_feature/person',strp,'_',k,'_d',int2str(d),'_uncomp.txt');
              %dlmwrite(filename,temp_feature);
          end
      end
-     ffff = strcat('/Users/thoithanh/Desktop/KTH_feature_80bins_all/feature/',k,'_feature.txt');
+     ffff = strcat('feature/',k,'_feature.txt');
      dlmwrite(ffff,feature);
      feature = [];
  end

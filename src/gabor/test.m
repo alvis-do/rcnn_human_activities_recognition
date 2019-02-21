@@ -17,24 +17,24 @@ gabor_90 = gabor2_fn(sigma,90,lambda,psi,gamma);
 
 class = ["boxing","running","walking","handwaving"];
 result = [];
-for k = class
-     k = char(k);
-     for d = 1:4
-         for p = 17:25
-             if p < 10
-                 strp = strcat('0',int2str(p));
-             else
-                 strp = int2str(p);
-             end
-             path = strcat('/Users/thoithanh/Desktop/Database_mp4/',k,'/person',strp,'_',k,'_d',int2str(d),'_uncomp.mp4');
-             test_feature = vid2feature_fn(path);
-             test_feature = test_feature(:,index_of_feature_retained);
-             [label, score] = predict(Mdl, test_feature);
-             result = [result; [k,label]];
-             disp([{k} p d ]);
-         end
-     end
-end
+% for k = class
+%      k = char(k);
+%      for d = 1:4
+%          for p = 17:25
+%              if p < 10
+%                  strp = strcat('0',int2str(p));
+%              else
+%                  strp = int2str(p);
+%              end
+%              path = strcat('video/',k,'/person',strp,'_',k,'_d',int2str(d),'_uncomp.mp4');
+%              test_feature = vid2feature_fn(path);
+%              test_feature = test_feature(:,index_of_feature_retained);
+%              [label, score] = predict(Mdl, test_feature);
+%              result = [result; [k,label]];
+%              disp([{k} p d ]);
+%          end
+%      end
+% end
 
 % result = [];
 % fid = fopen('video_test.txt');
@@ -51,11 +51,11 @@ end
 %     result = [result; [label, y_true]];
 % end
 
-% path = '/Users/thoithanh/Desktop/IMG_1708.mp4';
-% test_feature = vid2feature_fn(path);
-% test_feature = test_feature(:,index_of_feature_retained);
-% [label, score] = predict(Mdl, test_feature);
-% label
+path = 'video/boxing/person01_boxing_d4_uncomp.mp4';
+test_feature = vid2feature_fn(path);
+test_feature = test_feature(:,index_of_feature_retained);
+[label, score] = predict(Mdl, test_feature);
+label
 
 
 
@@ -113,12 +113,12 @@ new_points(position_delete_points,:) = [];
     object = cat(1,object,temp_extrema);
     temp_extrema(:,5) = [];
     
-% disp(i)
-% imshow(frames);
-% hold on,
-% rectangle('Position', temp_extrema, 'EdgeColor', 'yellow'),
-% plot(points(:,2),points(:,1),'g.'),
-% title('Clouds of interest points');
+disp(i)
+imshow(frames);
+hold on,
+rectangle('Position', temp_extrema, 'EdgeColor', 'yellow'),
+plot(points(:,2),points(:,1),'g.'),
+title('Clouds of interest points');
     
     
 end
